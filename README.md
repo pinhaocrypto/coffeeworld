@@ -1,5 +1,5 @@
 ## This template provides a minimal setup to get Next.js working with MiniKit
-test1
+test2
 ## Setup
 
 ```bash
