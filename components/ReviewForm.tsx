@@ -1,9 +1,10 @@
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
+import { Review } from '@/types/review';
 
 interface ReviewFormProps {
   coffeeShopId: string;
-  onReviewAdded: (review: any) => void;
+  onReviewAdded: (review: Review) => void;
 }
 
 export default function ReviewForm({ coffeeShopId, onReviewAdded }: ReviewFormProps) {
@@ -38,17 +39,18 @@ export default function ReviewForm({ coffeeShopId, onReviewAdded }: ReviewFormPr
         },
         body: JSON.stringify({
           coffeeShopId,
+          message: content,
           rating,
-          content,
         }),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to submit review');
+        throw new Error(data.error || 'Failed to submit review');
       }
       
-      const newReview = await response.json();
-      onReviewAdded(newReview);
+      onReviewAdded(data.review);
       
       // Reset form
       setRating(5);

@@ -9,12 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^1.16.8",
+    "@heroicons/react": "^2.2.0",
     "@worldcoin/minikit-js": "1.8.0",
+    "axios": "^1.8.4",
     "eruda": "^3.2.3",
-    "next": "14.2.6",
+    "next": "15.2.4",
     "next-auth": "^4.24.7",
-    "react": "^18",
-    "react-dom": "^18",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "solid": "link:@heroicons/react/24/solid",
+    "uuid": "^11.1.0",
     "viem": "^2.23.5"
   },
   "devDependencies": {
