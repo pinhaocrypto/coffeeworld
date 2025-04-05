@@ -29,7 +29,7 @@ interface VerifyCommandInput {
 
 // Action ID for Coffee World - should match your Developer Portal
 // *** IMPORTANT: Ensure this matches the Action ID in your Worldcoin Developer Portal ***
-const ACTION_ID = "coffee-world-auth"; // Or fetch from env var: process.env.NEXT_PUBLIC_WLD_ACTION_NAME || "coffee-world-auth";
+const ACTION_ID = "coffeeworld-review"; // Or fetch from env var: process.env.NEXT_PUBLIC_WLD_ACTION_NAME || "coffeeworld-review";
 
 // Component to handle MiniKit verification flow
 export default function Verify() {
@@ -120,7 +120,7 @@ export default function Verify() {
       const verifyPayload: VerifyCommandInput = {
         action: ACTION_ID,
         signal: "user-auth-signal", // Example signal
-        verification_level: VerificationLevel.Orb, // Or Device
+        verification_level: VerificationLevel.Device, // Or Device
       };
 
       console.log("Starting MiniKit verification with payload:", verifyPayload);
@@ -220,15 +220,36 @@ export default function Verify() {
     }
   };
 
-  // Log state before rendering the final JSX
+  const handleFallbackVerify = async () => {
+    console.log("MiniKit not available, using fallback verification");
+    setIsLoading(true);
+    setErrorMsg(null);
+    
+    try {
+      // Use NextAuth's signIn directly with worldcoin provider
+      const result = await signIn('worldcoin', { 
+        // Simulate a verification for development
+        redirect: false,
+      });
+      
+      if (result?.error) {
+        console.error("Fallback verification failed:", result.error);
+        setErrorMsg(`Verification failed: ${result.error}`);
+      } else {
+        console.log("Fallback verification succeeded");
+        window.location.reload(); // Refresh to update session
+      }
+    } catch (error) {
+      console.error("Error during fallback verification:", error);
+      setErrorMsg("Verification failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   console.log('[Verify Component Before Return] isLoading:', isLoading, 'errorMsg:', errorMsg, 'isMiniKitAvailable:', isMiniKitAvailable);
 
-  // Don't render anything if MiniKit is not available
-  if (!isMiniKitAvailable) {
-    return null;
-  }
-
-  // Safe check for session data
+  // Check if already authenticated regardless of MiniKit availability
   const isAuthenticated = status === 'authenticated' && !!session;
 
   return (
@@ -249,10 +270,10 @@ export default function Verify() {
       ) : (
         <button 
           className="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
-          onClick={handleVerify}
+          onClick={isMiniKitAvailable ? handleVerify : handleFallbackVerify}
           disabled={isLoading || status === 'loading'}
         >
-          {isLoading ? 'Verifying...' : (status === 'loading' ? 'Loading...' : 'Verify with World App')}
+          {isLoading ? 'Verifying...' : (status === 'loading' ? 'Loading...' : 'Verify with World ID')}
         </button>
       )}
     </div>
