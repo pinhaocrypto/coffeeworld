@@ -90,7 +90,7 @@ export const VerifyBlock = () => {
           const verifyPayload = {
             action: "coffee-world-verify",
             signal: "", // Empty string instead of undefined
-            verification_level: "orb" // String instead of enum
+            verification_level: "device" // String instead of enum
           };
           
           // Make sure verify is properly safeguarded

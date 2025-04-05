@@ -96,8 +96,8 @@ export default function WorldMiniKitButton() {
       // Prepare verification payload - follow MiniKit docs
       const verifyPayload: VerifyCommandInput = {
         action: ACTION_ID,
-        signal: "", // Optional 
-        verification_level: VerificationLevel.Orb,
+        signal: "default-signal", // Optional 
+        verification_level: VerificationLevel.Device,
       };
       
       console.log("Starting World App verification with payload:", verifyPayload);
