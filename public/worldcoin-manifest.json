@@ -1,0 +1,35 @@
+{
+  "name": "Coffee World",
+  "short_name": "Coffee World",
+  "description": "Find and review coffee shops near you, verified with Worldcoin",
+  "developer": {
+    "name": "Coffee World Team",
+    "url": "https://coffeeworld.vercel.app"
+  },
+  "version": "1.0.0",
+  "homepage_url": "https://coffeeworld.vercel.app",
+  "icons": [
+    {
+      "src": "/coffee-world-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "worldcoin": {
+    "app_id": "app_6bd93d77f6ac5663b82b4a4894eb3417",
+    "action_id": "coffee-world-auth",
+    "requires_verification": true,
+    "verification_level": "orb",
+    "requires_location": true
+  },
+  "permissions": [
+    "geolocation"
+  ],
+  "hooks": {
+    "onVerification": "/api/worldcoin/verify",
+    "onLogin": "/",
+    "onLogout": "/"
+  },
+  "theme_color": "#92400e",
+  "background_color": "#fffbeb"
+}
