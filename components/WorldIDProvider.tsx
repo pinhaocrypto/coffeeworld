@@ -1,14 +1,11 @@
 "use client"
-import React, { createContext, useContext, useState, ReactNode, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { ISuccessResult, IDKitWidget, VerificationLevel } from '@worldcoin/idkit';
 import { signIn, signOut, useSession } from 'next-auth/react';
 
 // Action ID for the application
 const APP_ID = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || 'app_6bd93d77f6ac5663b82b4a4894eb3417';
 const ACTION = "coffeeworld-review";
-
-// 在開發環境中自動模擬成功的驗證 - 安全檢測環境
-const IS_DEV = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 
 // Context to manage World ID verification state
 interface WorldIDContextType {
@@ -26,179 +23,181 @@ const WorldIDContext = createContext<WorldIDContextType | undefined>(undefined);
 
 // Provider component
 export function WorldIDProvider({ children }: { children: React.ReactNode }) {
+  // 追踪組件是否已在客戶端掛載
+  const [isMounted, setIsMounted] = useState(false);
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const openWidgetRef = useRef<(() => void) | null>(null);
+  const [widgetOpened, setWidgetOpened] = useState(false);
 
-  // Check if user is verified based on session
+  // 安全檢測環境變量
+  const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
+  // 在組件掛載後設置 isMounted
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 檢查用戶是否已經通過 World ID 驗證
   const isVerified = !!session?.user?.worldcoinVerified;
 
-  // 開發模式直接登入
-  const devModeLogin = async () => {
-    if (!IS_DEV) return;
-
+  // 處理 IDKit 驗證成功
+  const handleVerificationSuccess = useCallback(async (result: ISuccessResult) => {
+    if (!isMounted) return;
+    
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      console.log("Using dev mode login bypass");
-      const result = await signIn('development', {
-        redirect: false,
-        username: 'DevUser'
-      });
-
-      if (result?.error) {
-        throw new Error(`Dev login failed: ${result.error}`);
-      }
-
-      // Refresh to update session
-      window.location.reload();
-    } catch (error) {
-      console.error('Dev login error:', error);
-      setError(error instanceof Error ? error.message : 'Dev login failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 服務器端驗證 World ID 證明
-  const verifyProof = async (proof: ISuccessResult) => {
-    console.log('Verifying proof with World ID API:', proof);
-    try {
-      const response = await fetch('/api/verify-worldcoin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...proof, action: ACTION }),
-      });
-
-      if (!response.ok) {
-        const { code, detail } = await response.json();
-        throw new Error(`Error Code ${code}: ${detail}`);
-      }
-
-      const { verified } = await response.json();
-      return verified;
-    } catch (error) {
-      console.error('Error verifying proof:', error);
-      throw error;
-    }
-  };
-
-  // Handle World ID verification success
-  const handleVerificationSuccess = async (result: ISuccessResult) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('World ID verification successful:', result);
-
-      // 在開發模式直接使用 development provider
-      if (IS_DEV) {
-        console.log('Development mode: using dev provider instead of verifying proof');
-        await devModeLogin();
+      // 在開發環境中模擬成功的驗證
+      if (isDev) {
+        console.log('Development mode: simulating successful verification');
+        const devResult = await signIn('credentials', {
+          redirect: false,
+          nullifier_hash: `dev-user-${Date.now()}`,
+          worldcoinVerified: true
+        });
+        
+        if (devResult?.error) {
+          setError(`Dev auth error: ${devResult.error}`);
+          console.error('Dev auth error:', devResult.error);
+        }
+        
+        setWidgetOpened(false);
         return;
       }
-
-      // 驗證 proof
-      const verified = await verifyProof(result);
       
-      if (!verified) {
-        throw new Error('Proof verification failed');
-      }
-      
-      // 使用 NextAuth 進行身份驗證
-      const signInResult = await signIn('worldcoin', {
-        proof: JSON.stringify(result.proof),
-        nullifier_hash: result.nullifier_hash,
-        merkle_root: result.merkle_root,
-        verification_level: result.verification_level,
-        redirect: false,
+      // 驗證 World ID proof
+      const response = await fetch('/api/verify-worldcoin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...result, action: ACTION }),
       });
-
-      if (signInResult?.error) {
-        throw new Error(`Sign-in failed: ${signInResult.error}`);
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to verify World ID proof');
       }
-
-      // 刷新頁面以更新會話
-      window.location.reload();
-    } catch (error) {
-      console.error('Verification error:', error);
-      setError(error instanceof Error ? error.message : 'Verification failed');
+      
+      // 使用驗證結果登入
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        nullifier_hash: result.nullifier_hash,
+        worldcoinVerified: true
+      });
+      
+      if (signInResult?.error) {
+        setError(`Auth error: ${signInResult.error}`);
+        console.error('Sign in error:', signInResult.error);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error during verification';
+      setError(errorMessage);
+      console.error('Verification error:', err);
     } finally {
       setIsLoading(false);
+      setWidgetOpened(false);
     }
-  };
+  }, [isDev, isMounted]);
 
-  // Handle sign out
-  const handleSignOut = async () => {
+  // 處理登出
+  const handleSignOut = useCallback(async () => {
+    if (!isMounted) return;
+    
     setIsLoading(true);
     try {
       await signOut({ redirect: false });
-      window.location.reload();
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setError('Sign out failed');
+      // 可以選擇重新加載頁面以重置狀態
+      // window.location.reload();
+    } catch (err) {
+      console.error('Sign out error:', err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isMounted]);
 
-  // Function to open the World ID widget
+  // 開發模式直接登入
+  const devModeLogin = useCallback(async () => {
+    if (!isMounted || !isDev) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        nullifier_hash: `dev-user-${Date.now()}`,
+        worldcoinVerified: true
+      });
+      
+      if (result?.error) {
+        setError(`Dev login error: ${result.error}`);
+        console.error('Dev login error:', result.error);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error during dev login';
+      setError(errorMessage);
+      console.error('Dev login error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isDev, isMounted]);
+
+  // 打開 IDKit widget
   const openWidget = useCallback(() => {
-    // 在開發模式下，直接使用開發者登入
-    if (IS_DEV) {
-      devModeLogin();
-      return;
-    }
+    if (!isMounted) return;
+    setWidgetOpened(true);
+  }, [isMounted]);
 
-    if (openWidgetRef.current) {
-      openWidgetRef.current();
-    } else {
-      console.error('World ID widget not ready');
-      setError('World ID verification not available');
-    }
-  }, []);
-
-  // Context value
-  const contextValue = useMemo(() => ({
+  // 將上下文值與客戶端安全機制結合
+  const contextValue = {
     isVerified,
     isLoading,
     error,
     openWidget,
     handleVerificationSuccess,
     handleSignOut,
-    devModeLogin,
-  }), [isVerified, isLoading, error, openWidget, handleVerificationSuccess, handleSignOut]);
+    devModeLogin
+  };
 
   return (
-    <>
-      <WorldIDContext.Provider value={contextValue}>
-        {children}
-      </WorldIDContext.Provider>
-
-      <IDKitWidget
-        app_id={APP_ID.startsWith('app_') ? APP_ID as `app_${string}` : `app_${APP_ID}` as `app_${string}`}
-        action={ACTION}
-        signal=""
-        onSuccess={handleVerificationSuccess}
-        handleVerify={verifyProof}
-        verification_level={VerificationLevel.Device}
-        autoClose
-      >
-        {({ open }) => {
-          openWidgetRef.current = open;
-          return <div style={{ display: 'none' }} />;
-        }}
-      </IDKitWidget>
-    </>
+    <WorldIDContext.Provider value={contextValue}>
+      {children}
+      
+      {/* 只在客戶端渲染 IDKitWidget */}
+      {isMounted && (
+        <IDKitWidget
+          app_id={APP_ID.startsWith('app_') ? APP_ID as `app_${string}` : `app_${APP_ID}` as `app_${string}`}
+          action={ACTION}
+          onSuccess={handleVerificationSuccess}
+          verification_level={VerificationLevel.Device}
+          handleVerify={(data) => {
+            // Required by IDKit but we handle actual verification in onSuccess
+            return new Promise<void>((resolve) => {
+              resolve();
+            });
+          }}
+          autoClose
+        >
+          {/* IDKitWidget 需要子元素，但我們通過 openWidget 函數觸發 */}
+          {({ open }) => {
+            // 當 widgetOpened 為 true 時自動打開
+            if (widgetOpened && !isVerified && !isLoading) {
+              open();
+              // 重置 widgetOpened 以防止多次調用
+              setWidgetOpened(false);
+            }
+            return <div style={{ display: 'none' }} />;
+          }}
+        </IDKitWidget>
+      )}
+    </WorldIDContext.Provider>
   );
 }
 
 // Custom hook to use World ID context
-export function useWorldID() {
+export const useWorldID = (): WorldIDContextType => {
   const context = useContext(WorldIDContext);
   if (context === undefined) {
     throw new Error('useWorldID must be used within a WorldIDProvider');

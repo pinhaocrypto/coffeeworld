@@ -1,10 +1,50 @@
 "use client"
 import { useWorldID } from './WorldIDProvider';
+import { useState, useEffect } from 'react';
 
 export default function WorldIDButton() {
-  const { isVerified, isLoading, error, openWidget, handleSignOut, devModeLogin } = useWorldID();
-  // 安全檢測環境變量
-  const isDev = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
+  // 使用狀態來跟踪客戶端渲染
+  const [isMounted, setIsMounted] = useState(false);
+
+  // 在組件掛載後設置 isMounted
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 在服務器渲染或組件未掛載時不渲染任何內容
+  if (!isMounted) {
+    return null;
+  }
+
+  // 安全獲取 WorldID context
+  let worldIDContext;
+  try {
+    worldIDContext = useWorldID();
+  } catch (error) {
+    console.error('Error accessing WorldID context:', error);
+    // 返回簡單的備用按鈕
+    return (
+      <button 
+        className="px-3 py-1 text-sm font-medium text-white bg-amber-700 rounded hover:bg-amber-800 disabled:opacity-50 transition duration-200"
+      >
+        Verify with World ID
+      </button>
+    );
+  }
+
+  // 如果無法安全訪問 context 屬性，使用安全默認值
+  const {
+    isVerified = false,
+    isLoading = false,
+    error = null,
+    openWidget = () => {},
+    handleSignOut = async () => {},
+    devModeLogin = async () => {}
+  } = worldIDContext || {};
+
+  // 安全檢測環境，避免直接訪問 process.env
+  const isDev = typeof window !== 'undefined' && 
+    window.location.hostname === 'localhost';
 
   return (
     <div className="flex flex-col items-end">
@@ -37,7 +77,7 @@ export default function WorldIDButton() {
               onClick={devModeLogin}
               disabled={isLoading}
             >
-              {isLoading ? 'Logging in...' : 'Dev Login'}
+              Dev Login
             </button>
           )}
         </div>
