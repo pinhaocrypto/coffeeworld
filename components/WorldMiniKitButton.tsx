@@ -40,15 +40,33 @@ export default function WorldMiniKitButton() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        // A robust check for World App environment
+        // A more accurate check for World App environment
         const inWorldApp = (
           window.location.hostname.includes('worldcoin.org') || 
-          window.navigator.userAgent.includes('WorldApp') || 
+          window.navigator.userAgent.includes('World') || 
+          // Also check referrer if coming from World domains
+          (window.document.referrer && window.document.referrer.includes('worldcoin.org')) ||
           // @ts-ignore - Only check parent if we're in an iframe
           (window !== window.top && window.parent && window.parent !== window) ||
           // @ts-ignore - Check for MiniKit API
-          (window.MiniKit && typeof window.MiniKit.isInstalled === 'function' && window.MiniKit.isInstalled())
+          (window.MiniKit && typeof window.MiniKit.isInstalled === 'function')
         );
+        
+        // Add delayed check for MiniKit which might load after component mounts
+        if (!inWorldApp) {
+          setTimeout(() => {
+            try {
+              // @ts-ignore
+              const miniKitLoaded = !!(window.MiniKit && typeof window.MiniKit.isInstalled === 'function');
+              if (miniKitLoaded && !isMiniKitAvailable) {
+                console.log('MiniKit detected after delay');
+                setIsMiniKitAvailable(true);
+              }
+            } catch (e) {
+              console.error('Error in delayed MiniKit check:', e);
+            }
+          }, 1000);
+        }
         
         // For debugging
         console.log('World App environment detected:', inWorldApp);
@@ -61,8 +79,8 @@ export default function WorldMiniKitButton() {
         setIsMiniKitAvailable(false);
       }
     }
-  }, []);
-
+  }, [isMiniKitAvailable]);
+  
   const handleVerify = useCallback(async () => {
     // @ts-ignore
     if (typeof window === 'undefined' || !window.MiniKit || !window.MiniKit.isInstalled()) {
