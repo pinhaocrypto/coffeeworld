@@ -1,197 +1,64 @@
-import { useEffect, useState } from 'react';
-import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
-import { signIn, signOut } from 'next-auth/react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/router';
-import ErrorBoundary from '@/components/ErrorBoundary';
+"use client";
 
-// Get environment variables safely
-const getWorldcoinAppId = () => {
-  const appId = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID;
-  // Ensure it's formatted as expected by IDKit (app_xxx format)
-  if (appId && appId.startsWith('app_')) {
-    return appId as `app_${string}`;
-  }
-  // Use production app ID - make sure you've created this in the Worldcoin Developer Portal
-  return "app_staging_6bd93d77f6ac5663b82b4a4894eb3417" as `app_${string}`;
-};
+import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useWorldId } from "./minikit-provider"; 
+import { useRouter } from "next/navigation";
 
 export default function WorldIdAuthButton() {
   const { data: session, status } = useSession();
-  const [mounted, setMounted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const router = useRouter();
+  const { open, isLoading, errorMsg } = useWorldId(); 
+  const router = useRouter(); 
 
-  // Handle client-side only rendering
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const showSignIn = status === "unauthenticated";
+  const showSignOut = status === "authenticated";
+  const buttonDisabled = status === "loading" || isLoading; 
 
-  // Reset error message when session status changes
-  useEffect(() => {
-    if (status !== 'loading') {
-      setIsLoading(false);
-    }
-  }, [status]);
-
-  const handleVerify = async (proof: ISuccessResult) => {
-    setIsLoading(true);
-    setErrorMsg(null);
-    console.log("IDKit proof received:", proof);
-
-    try {
-      // --- Step 1: Backend Verification --- 
-      console.log("Sending proof to backend for verification...");
-      // IMPORTANT: Verify this is the correct endpoint and expected payload structure
-      // Correct the API endpoint path
-      const response = await fetch('/api/verify-worldcoin', { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          payload: proof, // Assuming backend expects this structure
-          action: process.env.NEXT_PUBLIC_WLD_ACTION_NAME || "coffee-world-auth", // Use consistent action name
-          signal: "default-signal" // Or relevant signal if needed
-        }), 
-      });
-
-      console.log("Backend verification response status:", response.status);
-      const verifyResult = await response.json();
-      console.log('Backend verification result:', verifyResult);
-      
-      if (!response.ok || !verifyResult.success) {
-        console.error('Backend verification failed:', verifyResult);
-        setErrorMsg(verifyResult.error || 'Backend verification failed. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-      
-      // --- Step 2: NextAuth Sign-in --- 
-      console.log("Backend verification successful. Proceeding to NextAuth sign-in...");
-      // Ensure consistency in verification_level
-      const signInPayload = {
-        proof: proof.proof,
-        nullifier_hash: proof.nullifier_hash,
-        merkle_root: proof.merkle_root,
-        verification_level: proof.verification_level || 'device', // Use 'device' for consistency
-        redirect: false,
-      };
-      console.log("Calling signIn with payload:", signInPayload);
-      
-      const signInResult = await signIn('worldcoin', signInPayload);
-      
-      console.log('Sign in result:', signInResult);
-      
-      if (signInResult?.error) {
-        console.error('Sign in error:', signInResult.error);
-        setErrorMsg(`Authentication failed: ${signInResult.error}`);
-      } else if (signInResult?.url) {
-        console.log("Sign in successful, redirecting...");
-        // Redirect logic might depend on your setup, using router push for SPA-like behavior
-        router.push(signInResult.url); 
-      } else {
-        // If no error and no URL, likely successful but no redirect needed
-        console.log("Sign in successful, reloading page...");
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Error during verification/sign-in process:', error);
-      // Check if the error is the specific 'a.length' error
-      if (error instanceof Error && error.message.includes("(evaluating 'a.length')")) {
-         setErrorMsg("An internal error occurred during the sign-in process. Please try again.");
-      } else {
-         setErrorMsg('Authentication error. Please try again later.');
-      }
-    } finally {
-      setIsLoading(false);
+  const handleSignIn = () => {
+    if (open) {
+      console.log("Opening IDKit Widget...");
+      open(); 
+    } else {
+      console.error("IDKit open function not available.");
     }
   };
-  
+
   const handleSignOut = async () => {
-    setIsLoading(true);
-    setErrorMsg(null);
-    
-    try {
-      // Clear any stored authentication data
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.removeItem('locationPermissionGranted');
-          localStorage.removeItem('worldcoin_session');
-        } catch (e) {
-          console.error('Error clearing localStorage:', e);
-        }
-      }
-      
-      // Use redirect: false to prevent client-side errors
-      await signOut({ 
-        callbackUrl: '/',
-        redirect: false
-      });
-      
-      // Force reload to clear state
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Error during sign out:', error);
-      setErrorMsg('Sign out failed. Please try again.');
-      setIsLoading(false);
-    }
+    console.log("Signing out...");
+    await signOut({ redirect: false }); 
+    // router.push('/'); 
   };
 
-  // Don't render anything during SSR
-  if (!mounted) return null;
-
-  // If user is signed in, show the sign out button
-  if (session) {
-    return (
-      <div>
-        {errorMsg && <div className="text-red-600 text-xs mb-2">{errorMsg}</div>}
-        <div className="text-sm text-white mb-2">
-          Signed in as <span className="font-semibold">{session.user?.name || 'Worldcoin User'}</span>
-        </div>
-        <button 
-          className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-          onClick={handleSignOut}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Signing Out...' : 'Sign Out'}
-        </button>
-      </div>
-    );
-  }
-
-  // If user is not signed in, show the appropriate authentication option based on environment
   return (
-    <div className="flex flex-col items-end">
-      {errorMsg && <div className="text-red-600 text-xs mb-2">{errorMsg}</div>}
-      
-      <div className="idkit-widget-wrapper">
-        <ErrorBoundary fallback={
-          <button 
-            className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-            disabled={isLoading}
+    <div className="flex flex-col items-center space-y-2">
+      {showSignIn && (
+        <button
+          className={`px-4 py-2 rounded-md text-white font-medium ${buttonDisabled ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+          onClick={handleSignIn}
+          disabled={buttonDisabled || !open} 
+        >
+          {isLoading ? "Verifying..." : "Sign In with World ID"}
+        </button>
+      )}
+
+      {showSignOut && (
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-600">Welcome!</span>
+          <button
+            className={`px-4 py-2 rounded-md text-white font-medium ${buttonDisabled ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'}`}
+            onClick={handleSignOut}
+            disabled={buttonDisabled}
           >
-            World ID Verification Unavailable
+            {isLoading ? "Signing out..." : "Sign Out"}
           </button>
-        }>
-          <IDKitWidget
-            app_id={getWorldcoinAppId()}
-            action="coffee-world-auth"
-            signal="coffee-world-user"
-            onSuccess={handleVerify}
-            verification_level={VerificationLevel.Device}
-          >
-            {({ open }) => (
-              <button 
-                className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-                onClick={open}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Verifying...' : 'Verify with World ID'}
-              </button>
-            )}
-          </IDKitWidget>
-        </ErrorBoundary>
-      </div>
+        </div>
+      )}
+
+      {errorMsg && (
+        <p className="text-sm text-red-600">Error: {errorMsg}</p>
+      )}
+      
+      {status === 'loading' && <p className="text-sm text-gray-500">Loading session...</p>} 
     </div>
   );
 }
