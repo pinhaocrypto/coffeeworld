@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
 import { signIn, signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/router';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Get environment variables safely
@@ -20,7 +21,8 @@ export default function WorldIdAuthButton() {
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+  const router = useRouter();
+
   // Handle client-side only rendering
   useEffect(() => {
     setMounted(true);
@@ -36,58 +38,69 @@ export default function WorldIdAuthButton() {
   const handleVerify = async (proof: ISuccessResult) => {
     setIsLoading(true);
     setErrorMsg(null);
-    
+    console.log("IDKit proof received:", proof);
+
     try {
-      console.log('Worldcoin proof received:', proof);
-      
-      // First verify with our backend
-      const verifyResponse = await fetch('/api/verify-worldcoin', {
+      // --- Step 1: Backend Verification --- 
+      console.log("Sending proof to backend for verification...");
+      // IMPORTANT: Verify this is the correct endpoint and expected payload structure
+      const response = await fetch('/api/worldcoin/verify', { 
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Send proof details directly
-          merkle_root: proof.merkle_root,
-          nullifier_hash: proof.nullifier_hash,
-          proof: proof.proof,
-          verification_level: proof.verification_level || 'orb'
-        }),
+          payload: proof, // Assuming backend expects this structure
+          action: process.env.NEXT_PUBLIC_WLD_ACTION_NAME || "coffee-world-auth", // Use consistent action name
+          signal: "default-signal" // Or relevant signal if needed
+        }), 
       });
+
+      console.log("Backend verification response status:", response.status);
+      const verifyResult = await response.json();
+      console.log('Backend verification result:', verifyResult);
       
-      const verifyResult = await verifyResponse.json();
-      console.log('Verification result:', verifyResult);
-      
-      if (!verifyResult.success) {
-        console.error('Verification failed:', verifyResult);
-        setErrorMsg('Verification failed. Please try again.');
+      if (!response.ok || !verifyResult.success) {
+        console.error('Backend verification failed:', verifyResult);
+        setErrorMsg(verifyResult.error || 'Backend verification failed. Please try again.');
         setIsLoading(false);
         return;
       }
       
-      // Sign in with NextAuth using the Worldcoin provider
-      const signInResult = await signIn('worldcoin', { 
+      // --- Step 2: NextAuth Sign-in --- 
+      console.log("Backend verification successful. Proceeding to NextAuth sign-in...");
+      // Ensure consistency in verification_level
+      const signInPayload = {
         proof: proof.proof,
         nullifier_hash: proof.nullifier_hash,
         merkle_root: proof.merkle_root,
-        verification_level: proof.verification_level || 'orb',
+        verification_level: proof.verification_level || 'device', // Use 'device' for consistency
         redirect: false,
-      });
+      };
+      console.log("Calling signIn with payload:", signInPayload);
+      
+      const signInResult = await signIn('worldcoin', signInPayload);
       
       console.log('Sign in result:', signInResult);
       
       if (signInResult?.error) {
         console.error('Sign in error:', signInResult.error);
-        setErrorMsg('Authentication failed. Please try again.');
+        setErrorMsg(`Authentication failed: ${signInResult.error}`);
       } else if (signInResult?.url) {
-        window.location.href = signInResult.url;
+        console.log("Sign in successful, redirecting...");
+        // Redirect logic might depend on your setup, using router push for SPA-like behavior
+        router.push(signInResult.url); 
       } else {
-        // If no error and no URL, likely successful but no redirect
+        // If no error and no URL, likely successful but no redirect needed
+        console.log("Sign in successful, reloading page...");
         window.location.reload();
       }
     } catch (error) {
-      console.error('Error during verification:', error);
-      setErrorMsg('Authentication error. Please try again later.');
+      console.error('Error during verification/sign-in process:', error);
+      // Check if the error is the specific 'a.length' error
+      if (error instanceof Error && error.message.includes("(evaluating 'a.length')")) {
+         setErrorMsg("An internal error occurred during the sign-in process. Please try again.");
+      } else {
+         setErrorMsg('Authentication error. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }
