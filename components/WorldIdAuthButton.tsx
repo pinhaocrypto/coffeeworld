@@ -2,16 +2,6 @@ import { useEffect, useState } from 'react';
 import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
 import { signIn, signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
-import { formatProofForAuth } from '@/utils/worldcoin';
-
-// Mock structure for World App credential that matches ISuccessResult
-interface WorldAppCredential {
-  credential_type: string;
-  proof: string;
-  merkle_root: string;
-  nullifier_hash: string;
-  verification_level: VerificationLevel | string;
-}
 
 // Get environment variables safely
 const getWorldcoinAppId = () => {
@@ -21,7 +11,7 @@ const getWorldcoinAppId = () => {
     return appId as `app_${string}`;
   }
   // Fallback to hard-coded value if not properly set
-  return "app_6bd93d77f6ac5663b82b4a4894eb3417" as `app_${string}`;
+  return "app_staging_6bd93d77f6ac5663b82b4a4894eb3417" as `app_${string}`;
 };
 
 export default function WorldIdAuthButton() {
@@ -42,72 +32,54 @@ export default function WorldIdAuthButton() {
     }
   }, [status]);
 
-  // Check if running as a Mini App inside World App
-  const isInWorldApp = mounted && typeof window !== 'undefined' && (
-    (() => {
-      try {
-        return window.location.hostname.includes('worldcoin.org') || 
-          window.navigator.userAgent.includes('WorldApp') ||
-          (!!window.parent && window.parent !== window);
-      } catch (e) {
-        // Handle potential cross-origin errors when checking window.parent
-        console.error('Error checking World App environment:', e);
-        return false;
-      }
-    })()
-  );
-
   const handleVerify = async (proof: ISuccessResult) => {
     setIsLoading(true);
     setErrorMsg(null);
     
     try {
-      // Format the proof for NextAuth
-      const worldcoinProof = formatProofForAuth(proof);
+      console.log('Worldcoin proof received:', proof);
       
-      // Log the proof for debugging
-      console.log('Worldcoin proof:', worldcoinProof);
+      // First verify with our backend
+      const verifyResponse = await fetch('/api/verify-worldcoin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // Send proof details directly as expected by the API
+          merkle_root: proof.merkle_root,
+          nullifier_hash: proof.nullifier_hash,
+          proof: proof.proof,
+          verification_level: proof.verification_level || 'orb'
+        }),
+      });
       
-      // First verify directly with our local API 
-      // (normally this would be done server-side during the NextAuth flow,
-      // but checking here helps with debugging)
-      try {
-        const verifyResponse = await fetch('/api/verify-worldcoin', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(worldcoinProof),
-        });
-        
-        const verifyResult = await verifyResponse.json();
-        console.log('Pre-verification result:', verifyResult);
-        
-        if (!verifyResult.success) {
-          console.error('Pre-verification failed:', verifyResult);
-          setErrorMsg('Verification failed. Please try again.');
-          setIsLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.error('Error during pre-verification:', error);
-        // Continue with auth flow even if pre-verification fails
+      const verifyResult = await verifyResponse.json();
+      console.log('Verification result:', verifyResult);
+      
+      if (!verifyResult.success) {
+        console.error('Verification failed:', verifyResult);
+        setErrorMsg('Verification failed. Please try again.');
+        setIsLoading(false);
+        return;
       }
       
       // Sign in with NextAuth using the Worldcoin provider
-      const result = await signIn('worldcoin', { 
-        proof: worldcoinProof.proof,
-        nullifier_hash: worldcoinProof.nullifier_hash,
-        merkle_root: worldcoinProof.merkle_root,
-        verification_level: worldcoinProof.verification_level,
+      const signInResult = await signIn('worldcoin', { 
+        proof: proof.proof,
+        nullifier_hash: proof.nullifier_hash,
+        merkle_root: proof.merkle_root,
+        verification_level: proof.verification_level || 'orb',
         redirect: false,
       });
       
-      if (result?.error) {
-        console.error('Sign in error:', result.error);
+      console.log('Sign in result:', signInResult);
+      
+      if (signInResult?.error) {
+        console.error('Sign in error:', signInResult.error);
         setErrorMsg('Authentication failed. Please try again.');
-      } else if (result?.url) {
-        window.location.href = result.url;
+      } else if (signInResult?.url) {
+        window.location.href = signInResult.url;
       } else {
         // If no error and no URL, likely successful but no redirect
         window.location.reload();
@@ -141,7 +113,7 @@ export default function WorldIdAuthButton() {
         redirect: false
       });
       
-      // Force reload if needed to clear state
+      // Force reload to clear state
       window.location.href = '/';
     } catch (error) {
       console.error('Error during sign out:', error);
@@ -150,8 +122,10 @@ export default function WorldIdAuthButton() {
     }
   };
 
+  // Don't render anything during SSR
   if (!mounted) return null;
 
+  // If user is signed in, show the sign out button
   if (session) {
     return (
       <div>
@@ -170,67 +144,48 @@ export default function WorldIdAuthButton() {
     );
   }
 
+  // If user is not signed in, show the IDKit widget
   return (
     <div className="flex flex-col items-end">
       {errorMsg && <div className="text-red-600 text-xs mb-2">{errorMsg}</div>}
-      {isInWorldApp ? (
-        // Special streamlined UI for World App users
-        <button
-          className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-          onClick={() => {
-            try {
-              // Create a mock credential that satisfies the ISuccessResult interface
-              const worldAppCredential: WorldAppCredential & ISuccessResult = {
-                credential_type: 'orb',
-                proof: 'world-app-mock-proof',
-                merkle_root: 'world-app-mock-root',
-                nullifier_hash: 'world-app-mock-hash',
-                verification_level: VerificationLevel.Orb
-              };
-              handleVerify(worldAppCredential);
-            } catch (error) {
-              console.error('Error during World App auth:', error);
-              setErrorMsg('Authentication failed. Please try again.');
-            }
-          }}
-          disabled={isLoading}
+      <div className="idkit-widget-wrapper">
+        <IDKitWidget
+          app_id={getWorldcoinAppId()}
+          action="coffee-world-auth"
+          signal="coffee-world-user"
+          onSuccess={handleVerify}
+          verification_level={VerificationLevel.Device}
         >
-          {isLoading ? 'Verifying...' : 'Verify with World ID'}
-        </button>
-      ) : (
-        // Regular web UI with IDKit widget
-        <div className="idkit-widget-wrapper">
-          <IDKitWidget
-            app_id={getWorldcoinAppId()}
-            action="coffee-world-auth"
-            onSuccess={handleVerify}
-            verification_level={VerificationLevel.Device}
-            handleVerify={async (proof) => {
-              // This is called when the proof is verified by IDKit
-              // In development mode, always return true
-              console.log('IDKit internal verification called');
-              return true as any; // Force type compatibility
-            }}
-          >
-            {({ open }) => (
-              <button 
-                className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-                onClick={() => {
-                  try {
-                    open();
-                  } catch (error) {
-                    console.error('Error opening IDKit:', error);
-                    setErrorMsg('Failed to open verification dialog. Please try again.');
+          {({ open }) => (
+            <button 
+              className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
+              onClick={() => {
+                try {
+                  open();
+                } catch (error) {
+                  console.error('Error opening IDKit:', error);
+                  setErrorMsg('Failed to open verification dialog. Please try again.');
+                  
+                  // For simulation mode, create a mock credential
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('Using simulation mode for development');
+                    const mockCredential: ISuccessResult = {
+                      proof: 'world-app-mock-proof',
+                      merkle_root: 'world-app-mock-root',
+                      nullifier_hash: 'world-app-mock-hash',
+                      verification_level: VerificationLevel.Orb
+                    };
+                    handleVerify(mockCredential);
                   }
-                }}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Verifying...' : 'Sign in with World ID'}
-              </button>
-            )}
-          </IDKitWidget>
-        </div>
-      )}
+                }
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Verifying...' : 'Verify with World ID'}
+            </button>
+          )}
+        </IDKitWidget>
+      </div>
     </div>
   );
 }
