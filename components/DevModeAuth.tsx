@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 
 export default function DevModeAuth() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
-  const isDev = process.env.NODE_ENV !== 'production';
-  const isAuthenticated = session?.user?.worldcoinVerified;
+  
+  // 只在開發環境中啟用
+  const isDev = typeof process !== 'undefined' && 
+                process.env.NODE_ENV !== 'production';
+  
+  // 如果不是開發環境或者會話還在加載中，不渲染任何內容
+  if (!isDev || status === 'loading') return null;
+  
+  const isAuthenticated = !!session?.user?.worldcoinVerified;
 
   const handleDevLogin = async () => {
     setIsLoading(true);
@@ -42,9 +49,6 @@ export default function DevModeAuth() {
     }
   };
 
-  // 只在開發環境中顯示
-  if (!isDev) return null;
-
   return isAuthenticated ? (
     <button
       onClick={handleSignOut}
@@ -59,7 +63,7 @@ export default function DevModeAuth() {
       disabled={isLoading}
       className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50"
     >
-      {isLoading ? 'Logging in...' : '🔧 Dev Mode Login'}
+      {isLoading ? 'Logging in...' : ' Dev Mode Login'}
     </button>
   );
 }
