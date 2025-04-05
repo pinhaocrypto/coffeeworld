@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import ReviewForm from '@/components/ReviewForm';
 import ReviewItem from '@/components/ReviewItem';
 import { Review } from '@/types/review';
-import AuthButton from '@/components/AuthButton';
+import Verify from '@/components/Verify';
 import CheckInButton from '@/components/CheckInButton';
 import CrowdStatus from '@/components/CrowdStatus';
 
@@ -146,15 +146,15 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
       <div className="mt-10">
         <h2 className="text-2xl font-bold mb-6">Reviews</h2>
         
-        {/* Worldcoin Auth Message */}
+        {/* Worldcoin Auth Message - Updated to use Verify instead of AuthButton */}
         {!session ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8 text-center">
-            <h3 className="text-xl font-semibold mb-2">Sign in with Worldcoin to join the discussion</h3>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
+            <h3 className="text-xl font-semibold mb-2">Verify with World ID to leave reviews</h3>
             <p className="text-gray-600 mb-4">
-              To leave reviews and vote on others&apos; reviews, you&apos;ll need to verify with Worldcoin.
+              Use the World App to verify and leave your review. Your identity remains private while proving you're human.
             </p>
-            <div className="flex justify-center">
-              <AuthButton />
+            <div className="flex justify-center mt-4">
+              <Verify />
             </div>
           </div>
         ) : (
