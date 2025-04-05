@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
 import { signIn, signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Get environment variables safely
 const getWorldcoinAppId = () => {
@@ -10,7 +11,7 @@ const getWorldcoinAppId = () => {
   if (appId && appId.startsWith('app_')) {
     return appId as `app_${string}`;
   }
-  // Fallback to hard-coded value if not properly set
+  // Use production app ID - make sure you've created this in the Worldcoin Developer Portal
   return "app_staging_6bd93d77f6ac5663b82b4a4894eb3417" as `app_${string}`;
 };
 
@@ -46,7 +47,7 @@ export default function WorldIdAuthButton() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Send proof details directly as expected by the API
+          // Send proof details directly
           merkle_root: proof.merkle_root,
           nullifier_hash: proof.nullifier_hash,
           proof: proof.proof,
@@ -97,7 +98,7 @@ export default function WorldIdAuthButton() {
     setErrorMsg(null);
     
     try {
-      // Clear any stored permission and authentication data
+      // Clear any stored authentication data
       if (typeof window !== 'undefined') {
         try {
           localStorage.removeItem('locationPermissionGranted');
@@ -144,47 +145,38 @@ export default function WorldIdAuthButton() {
     );
   }
 
-  // If user is not signed in, show the IDKit widget
+  // If user is not signed in, show the appropriate authentication option based on environment
   return (
     <div className="flex flex-col items-end">
       {errorMsg && <div className="text-red-600 text-xs mb-2">{errorMsg}</div>}
+      
       <div className="idkit-widget-wrapper">
-        <IDKitWidget
-          app_id={getWorldcoinAppId()}
-          action="coffee-world-auth"
-          signal="coffee-world-user"
-          onSuccess={handleVerify}
-          verification_level={VerificationLevel.Device}
-        >
-          {({ open }) => (
-            <button 
-              className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-              onClick={() => {
-                try {
-                  open();
-                } catch (error) {
-                  console.error('Error opening IDKit:', error);
-                  setErrorMsg('Failed to open verification dialog. Please try again.');
-                  
-                  // For simulation mode, create a mock credential
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('Using simulation mode for development');
-                    const mockCredential: ISuccessResult = {
-                      proof: 'world-app-mock-proof',
-                      merkle_root: 'world-app-mock-root',
-                      nullifier_hash: 'world-app-mock-hash',
-                      verification_level: VerificationLevel.Orb
-                    };
-                    handleVerify(mockCredential);
-                  }
-                }
-              }}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Verifying...' : 'Verify with World ID'}
-            </button>
-          )}
-        </IDKitWidget>
+        <ErrorBoundary fallback={
+          <button 
+            className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
+            disabled={isLoading}
+          >
+            World ID Verification Unavailable
+          </button>
+        }>
+          <IDKitWidget
+            app_id={getWorldcoinAppId()}
+            action="coffee-world-auth"
+            signal="coffee-world-user"
+            onSuccess={handleVerify}
+            verification_level={VerificationLevel.Device}
+          >
+            {({ open }) => (
+              <button 
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
+                onClick={open}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Verifying...' : 'Verify with World ID'}
+              </button>
+            )}
+          </IDKitWidget>
+        </ErrorBoundary>
       </div>
     </div>
   );

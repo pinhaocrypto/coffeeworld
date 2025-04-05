@@ -1,91 +1,91 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { getSession } from 'next-auth/react';
+import { verifyWorldcoinProof } from '@/utils/worldcoin';
 
-// Worldcoin verification API endpoint (SIMULATION MODE)
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Only accept POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Extract the verification payload from the request
+    // Get current session
+    const session = await getSession({ req });
+    
+    // Extract the verification parameters
     const { merkle_root, nullifier_hash, proof, verification_level } = req.body;
-
+    
     if (!merkle_root || !nullifier_hash || !proof) {
-      return res.status(400).json({ error: 'Missing required verification parameters' });
-    }
-
-    // SIMULATION MODE: Always return successful verification for development
-    // This bypasses the actual Worldcoin API call for local development
-    console.log('SIMULATION MODE: Worldcoin verification bypassed for development');
-    console.log('Proof received:', { merkle_root, nullifier_hash, proof, verification_level });
-    
-    // Detect if this is test or mock data
-    const isMockData = proof === 'world-app-mock-proof' || 
-                      proof.includes('mock') || 
-                      proof.length < 50;
-    
-    if (isMockData) {
-      console.log('Mock/test data detected - auto-approving for development');
-      return res.status(200).json({
-        success: true,
-        verification: {
-          verified: true,
-          nullifier_hash: nullifier_hash,
-          merkle_root: merkle_root,
-          action: 'coffee-world-auth',
-          verification_level: verification_level || "orb"
-        }
+      return res.status(400).json({ 
+        success: false,
+        error: 'Missing required verification parameters' 
       });
     }
     
-    // For non-mock data, attempt to call the real API
+    // Call the World ID verification API
     try {
-      // Only try real verification if credentials are available
-      if (process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID) {
-        const verifyRes = await fetch(
-          `https://developer.worldcoin.org/api/v1/verify/app_${process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              merkle_root,
-              nullifier_hash,
-              proof,
-              verification_level: verification_level || "orb"
-            }),
-          }
-        );
-
-        const verification = await verifyRes.json();
-
-        // If the verification was successful, return a success response
-        if (verifyRes.status === 200) {
-          return res.status(200).json({
-            success: true,
-            verification
-          });
+      // Make sure you have NEXT_PUBLIC_WORLDCOIN_APP_ID set in your environment variables
+      if (!process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID) {
+        return res.status(500).json({ 
+          success: false,
+          error: 'Worldcoin app ID is not configured' 
+        });
+      }
+      
+      // Format the app ID correctly - strip 'app_' prefix if needed
+      const worldcoinAppId = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID.startsWith('app_') 
+        ? process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID.substring(4) 
+        : process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID;
+      
+      console.log(`Verifying proof with Worldcoin API for app ID: ${worldcoinAppId}`);
+      
+      const verifyRes = await fetch(
+        `https://developer.worldcoin.org/api/v1/verify/app_${worldcoinAppId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            merkle_root,
+            nullifier_hash,
+            proof,
+            verification_level: verification_level || "orb"
+          }),
         }
-        
-        console.log('Real API verification failed, falling back to simulation mode');
+      );
+
+      if (!verifyRes.ok) {
+        const errorText = await verifyRes.text();
+        console.error('Worldcoin API error:', verifyRes.status, errorText);
+        return res.status(verifyRes.status).json({ 
+          success: false,
+          error: `Worldcoin API error: ${verifyRes.status}`,
+          details: errorText
+        });
       }
+
+      const verification = await verifyRes.json();
+      console.log('Worldcoin verification result:', verification);
+
+      // Return success response with verification details
+      return res.status(200).json({
+        success: true,
+        verification,
+        user: session ? {
+          isAuthenticated: !!session,
+          name: session.user?.name || null,
+          worldcoinVerified: true
+        } : null
+      });
     } catch (error) {
-      console.error('Error contacting Worldcoin API, using simulation fallback:', error);
+      console.error('Error calling Worldcoin API:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Error calling Worldcoin API', 
+        details: String(error) 
+      });
     }
-    
-    // Fallback to simulation success for all non-mock requests too
-    return res.status(200).json({
-      success: true,
-      simulation: true,
-      verification: {
-        verified: true,
-        nullifier_hash: nullifier_hash,
-        merkle_root: merkle_root,
-        action: 'coffee-world-auth',
-        verification_level: verification_level || "orb"
-      }
-    });
   } catch (error) {
     console.error('Error in verification process:', error);
     return res.status(500).json({
