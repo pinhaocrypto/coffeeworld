@@ -30,20 +30,31 @@ export default function Home() {
   const { data: session } = useSession();
   const [coffeeShops, setCoffeeShops] = useState<CoffeeShop[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error' | 'denied' | 'unavailable' | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error' | 'denied' | 'unavailable' | 'permission_needed' | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedRadius, setSelectedRadius] = useState<number>(3000); // Default to 3km
+  const [showLocationPrompt, setShowLocationPrompt] = useState<boolean>(false);
 
   // Get user location and fetch coffee shops
   useEffect(() => {
     if (session) {
-      getUserLocation();
+      // Show location prompt instead of automatically requesting
+      setShowLocationPrompt(true);
+      setLoading(false);
+      setLocationStatus('permission_needed');
     } else {
       setCoffeeShops([]);
       setLoading(false);
     }
   }, [session]);
+
+  // Function to request location permission explicitly
+  const requestLocationPermission = () => {
+    setShowLocationPrompt(false);
+    setLoading(true);
+    getUserLocation();
+  };
 
   // Function to get the user's location
   const getUserLocation = () => {
@@ -195,22 +206,57 @@ export default function Home() {
       <section className="text-center py-10">
         <h1 className="text-4xl font-bold text-amber-800">Coffee World</h1>
         <p className="mt-2 text-gray-600 max-w-2xl mx-auto">Find the best coffee shops around you, verified by Worldcoin.</p>
-        <div className="mt-6">
-          <AuthButton />
-        </div>
       </section>
 
       {session ? (
         <section>
           <h2 className="text-2xl font-bold mb-4">Coffee Shops Near You</h2>
           
+          {/* Location permission prompt */}
+          {showLocationPrompt && (
+            <div className="bg-white border border-amber-200 rounded-lg p-6 mb-6 shadow-md">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 mr-4">
+                  <svg className="h-10 w-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Location Access Required</h3>
+                  <p className="text-gray-600 mb-4">
+                    To show you coffee shops nearby, Coffee World needs access to your location. 
+                    Your location is only used to find coffee shops and is never stored or shared.
+                  </p>
+                  <button
+                    onClick={requestLocationPermission}
+                    className="inline-flex items-center px-5 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Share My Location
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Location status messages */}
           {locationStatus === 'denied' && (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-4">
               <p>{error}</p>
+              <p className="mt-2">
+                <strong>How to enable location access:</strong>
+              </p>
+              <ul className="list-disc ml-5 mt-1">
+                <li>Click the lock/info icon in your browser's address bar</li>
+                <li>Find "Location" and change it to "Allow"</li>
+                <li>Refresh the page and try again</li>
+              </ul>
               <button 
                 onClick={() => handleRetry(false)}
-                className="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
+                className="mt-4 px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
               >
                 Try Again
               </button>
@@ -235,7 +281,7 @@ export default function Home() {
             </div>
           )}
           
-          {error && locationStatus !== 'denied' && locationStatus !== 'error' && locationStatus !== 'unavailable' && (
+          {error && locationStatus !== 'denied' && locationStatus !== 'error' && locationStatus !== 'unavailable' && locationStatus !== 'permission_needed' && (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-4">
               <p>{error}</p>
               <button 
@@ -280,28 +326,26 @@ export default function Home() {
                 <CoffeeShopCard key={shop.id} shop={shop} />
               ))}
             </div>
-          ) : (
+          ) : locationStatus === 'success' ? (
             <div className="text-center py-10">
               <p className="text-lg">No coffee shops found within {selectedRadius/1000}km.</p>
               <p className="text-gray-600 mt-2">Try increasing your search radius or check back later!</p>
-              {locationStatus === 'success' && (
-                <div className="flex justify-center space-x-4 mt-4">
-                  <button 
-                    onClick={() => handleRetry(false)}
-                    className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
-                  >
-                    Retry Search
-                  </button>
-                  <button 
-                    onClick={() => handleRetry(true)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                  >
-                    Clear Cache & Retry
-                  </button>
-                </div>
-              )}
+              <div className="flex justify-center space-x-4 mt-4">
+                <button 
+                  onClick={() => handleRetry(false)}
+                  className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+                >
+                  Retry Search
+                </button>
+                <button 
+                  onClick={() => handleRetry(true)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                >
+                  Clear Cache & Retry
+                </button>
+              </div>
             </div>
-          )}
+          ) : null}
         </section>
       ) : (
         <section className="text-center py-10 bg-gray-50 rounded-lg">

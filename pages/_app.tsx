@@ -9,7 +9,7 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
     <SessionProvider session={session}>
       <MiniKitProvider>
         <Head>
-          <title>Coffee Finder</title>
+          <title>Coffee World</title>
           <meta name="description" content="Find and review the best coffee shops" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" href="/favicon.ico" />
@@ -17,7 +17,7 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
         <div className="min-h-screen bg-amber-50">
           <header className="bg-amber-800 text-white shadow-md">
             <div className="container mx-auto p-4 flex justify-between items-center">
-              <h1 className="text-2xl font-bold">Coffee Finder</h1>
+              <h1 className="text-2xl font-bold">Coffee World</h1>
             </div>
           </header>
           <main className="container mx-auto p-4">
@@ -25,7 +25,7 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
           </main>
           <footer className="bg-amber-800 text-white mt-8 py-6">
             <div className="container mx-auto px-4 text-center">
-              <p> {new Date().getFullYear()} Coffee Finder. Powered by Worldcoin.</p>
+              <p> {new Date().getFullYear()} Coffee World. Powered by Worldcoin.</p>
             </div>
           </footer>
         </div>
