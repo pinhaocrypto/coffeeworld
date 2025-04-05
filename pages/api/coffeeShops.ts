@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from 'next-auth/react';
 import axios from 'axios';
 
 // Define coffee shop interface with geographic coordinates
@@ -173,12 +172,6 @@ function deg2rad(deg: number): number {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Check authentication
-  const session = await getSession({ req });
-  if (!session) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
   try {
     const { latitude, longitude, radius, id } = req.query;
     

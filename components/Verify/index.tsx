@@ -223,9 +223,9 @@ export default function Verify() {
   // Log state before rendering the final JSX
   console.log('[Verify Component Before Return] isLoading:', isLoading, 'errorMsg:', errorMsg, 'isMiniKitAvailable:', isMiniKitAvailable);
 
-  // Render nothing if MiniKit is not available (or show a message)
+  // Don't render anything if MiniKit is not available
   if (!isMiniKitAvailable) {
-    return <div className="text-xs text-amber-300 p-2">World App features inactive.</div>;
+    return null;
   }
 
   // Safe check for session data

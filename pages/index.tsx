@@ -226,21 +226,22 @@ export default function Home() {
 
         {!loading && locationStatus === 'success' && (
           <div className="mb-6">
-            <label htmlFor="radius-select" className="block text-sm font-medium text-gray-700 mb-1">
-              Search Radius:
-            </label>
-            <select
-              id="radius-select"
-              value={selectedRadius}
-              onChange={(e) => setSelectedRadius(Number(e.target.value))}
-              className="block w-full max-w-xs px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
-            >
+            <h3 className="text-lg font-semibold mb-2 text-amber-800">Search Radius</h3>
+            <div className="flex flex-wrap gap-2">
               {distanceOptions.map(option => (
-                <option key={option.value} value={option.value}>
+                <button
+                  key={option.value}
+                  onClick={() => setSelectedRadius(option.value)}
+                  className={`px-4 py-2 rounded-full border transition-all ${
+                    selectedRadius === option.value
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400 hover:bg-amber-50'
+                  }`}
+                >
                   {option.label}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         )}
         
