@@ -2,8 +2,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { signIn, signOut, useSession } from 'next-auth/react';
 
-// Since there appear to be TypeScript issues with imports, 
-// we'll access MiniKit via the window object and define types locally
+// Since there are TypeScript issues with imports, we define types locally
 interface VerificationLevel {
   Orb: 'orb';
   Device: 'device';
@@ -19,6 +18,7 @@ interface ISuccessResult {
   merkle_root: string;
   nullifier_hash: string;
   verification_level: string;
+  status?: string;
 }
 
 interface VerifyCommandInput {
@@ -27,12 +27,7 @@ interface VerifyCommandInput {
   verification_level?: string;
 }
 
-interface MiniKitVerifyResponse {
-  status: string;
-  finalPayload: ISuccessResult;
-}
-
-// Action ID for Coffee World
+// Action ID for Coffee World - should match your Developer Portal
 const ACTION_ID = "coffee-world-auth";
 
 export default function WorldMiniKitButton() {
@@ -45,10 +40,10 @@ export default function WorldMiniKitButton() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        // A more robust check for World App environment
+        // A robust check for World App environment
         const inWorldApp = (
           window.location.hostname.includes('worldcoin.org') || 
-          window.navigator.userAgent.includes('WorldApp') ||
+          window.navigator.userAgent.includes('WorldApp') || 
           // @ts-ignore - Only check parent if we're in an iframe
           (window !== window.top && window.parent && window.parent !== window) ||
           // @ts-ignore - Check for MiniKit API
@@ -80,26 +75,32 @@ export default function WorldMiniKitButton() {
     setErrorMsg(null);
     
     try {
-      // Prepare verification payload
+      // Prepare verification payload - follow MiniKit docs
       const verifyPayload: VerifyCommandInput = {
         action: ACTION_ID,
-        signal: "", // Optional
+        signal: "", // Optional 
         verification_level: VerificationLevel.Orb,
       };
       
+      console.log("Starting World App verification with payload:", verifyPayload);
+      
       // Request verification from World App
       // @ts-ignore
-      const verifyResponse: MiniKitVerifyResponse = await window.MiniKit.commandsAsync.verify(verifyPayload);
+      const response = await window.MiniKit.commandsAsync.verify(verifyPayload);
+      console.log("World App verification response:", response);
+      
+      // Extract the finalPayload from response
+      const { finalPayload } = response;
 
       // Handle command error
-      if (verifyResponse.status === "error") {
-        console.log("Command error:", verifyResponse);
+      if (finalPayload.status === "error") {
+        console.error("Command error:", finalPayload);
         setErrorMsg("Verification failed. Please try again.");
         setIsLoading(false);
-        return verifyResponse;
+        return finalPayload;
       }
 
-      console.log("Verification successful:", verifyResponse);
+      console.log("Verification successful:", finalPayload);
       
       // Verify the proof in the backend
       const verifyResponseJson = await fetch(`/api/verify-worldcoin`, {
@@ -108,11 +109,11 @@ export default function WorldMiniKitButton() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          // Direct format expected by the API endpoint
-          merkle_root: verifyResponse.finalPayload.merkle_root,
-          nullifier_hash: verifyResponse.finalPayload.nullifier_hash,
-          proof: verifyResponse.finalPayload.proof,
-          verification_level: verifyResponse.finalPayload.verification_level
+          // Direct format expected by the API
+          merkle_root: finalPayload.merkle_root,
+          nullifier_hash: finalPayload.nullifier_hash,
+          proof: finalPayload.proof,
+          verification_level: finalPayload.verification_level
         }),
       });
 
@@ -125,10 +126,10 @@ export default function WorldMiniKitButton() {
         
         // Sign in with NextAuth
         const signInResult = await signIn('worldcoin', { 
-          proof: verifyResponse.finalPayload.proof,
-          nullifier_hash: verifyResponse.finalPayload.nullifier_hash,
-          merkle_root: verifyResponse.finalPayload.merkle_root,
-          verification_level: verifyResponse.finalPayload.verification_level,
+          proof: finalPayload.proof,
+          nullifier_hash: finalPayload.nullifier_hash,
+          merkle_root: finalPayload.merkle_root,
+          verification_level: finalPayload.verification_level,
           redirect: false,
         });
         
@@ -156,7 +157,7 @@ export default function WorldMiniKitButton() {
     setErrorMsg(null);
     
     try {
-      // Clear any stored permission and authentication data
+      // Clear any stored authentication data
       if (typeof window !== 'undefined') {
         try {
           localStorage.removeItem('locationPermissionGranted');
