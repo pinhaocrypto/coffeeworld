@@ -50,29 +50,29 @@ export default function Verify() {
     if (typeof window !== 'undefined') {
       try {
         // Safe check for MiniKit
-        const hasMiniKit = typeof window !== 'undefined' && 
-                        window.hasOwnProperty('MiniKit') && 
-                        // @ts-ignore - MiniKit is injected by World App
-                        window.MiniKit && 
-                        // @ts-ignore
-                        typeof window.MiniKit.isInstalled === 'function';
-                        
+        const hasMiniKit = typeof window !== 'undefined' &&
+          window.hasOwnProperty('MiniKit') &&
+          // @ts-ignore - MiniKit is injected by World App
+          window.MiniKit &&
+          // @ts-ignore
+          typeof window.MiniKit.isInstalled === 'function';
+
         if (hasMiniKit) {
           if (mounted) setIsMiniKitAvailable(true);
           return;
         }
-        
+
         // Add delayed check as MiniKit might initialize later
         timeoutId = setTimeout(() => {
           try {
             // Repeat the same safe check
-            const miniKitLoaded = typeof window !== 'undefined' && 
-                            window.hasOwnProperty('MiniKit') && 
-                            // @ts-ignore
-                            window.MiniKit && 
-                            // @ts-ignore
-                            typeof window.MiniKit.isInstalled === 'function';
-                            
+            const miniKitLoaded = typeof window !== 'undefined' &&
+              window.hasOwnProperty('MiniKit') &&
+              // @ts-ignore
+              window.MiniKit &&
+              // @ts-ignore
+              typeof window.MiniKit.isInstalled === 'function';
+
             if (miniKitLoaded && mounted) {
               console.log('MiniKit detected after delay');
               setIsMiniKitAvailable(true);
@@ -87,7 +87,7 @@ export default function Verify() {
         if (mounted) setIsMiniKitAvailable(false);
       }
     }
-    
+
     // Cleanup timeout on unmount
     return () => {
       mounted = false;
@@ -100,10 +100,10 @@ export default function Verify() {
   const handleVerify = useCallback(async () => {
     // Enhanced safety check for MiniKit availability
     if (
-      typeof window === 'undefined' || 
-      !window.hasOwnProperty('MiniKit') || 
+      typeof window === 'undefined' ||
+      !window.hasOwnProperty('MiniKit') ||
       // @ts-ignore
-      !window.MiniKit || 
+      !window.MiniKit ||
       // @ts-ignore
       typeof window.MiniKit.commandsAsync?.verify !== 'function'
     ) {
@@ -134,9 +134,9 @@ export default function Verify() {
       if (!response || typeof response !== 'object') {
         throw new Error("Invalid response from MiniKit verification");
       }
-      
+
       const finalPayload = response.finalPayload || response;
-      
+
       // Handle command error with safe checks
       if (!finalPayload || finalPayload.status === "error") {
         console.error("MiniKit command error:", finalPayload);
@@ -152,7 +152,7 @@ export default function Verify() {
         setIsLoading(false);
         return;
       }
-      
+
       console.log("MiniKit verification successful, proceeding to backend:", finalPayload);
 
       // Verify the proof in the backend
@@ -177,7 +177,7 @@ export default function Verify() {
         console.log("Backend verification success! Signing in...");
 
         // Sign in with NextAuth using the verified details
-        const signInResult = await signIn('worldcoin', { 
+        const signInResult = await signIn('worldcoin', {
           // Pass necessary details for NextAuth provider
           nullifier_hash: finalPayload.nullifier_hash,
           // Add other fields if your NextAuth provider requires them
@@ -224,14 +224,14 @@ export default function Verify() {
     console.log("MiniKit not available, using fallback verification");
     setIsLoading(true);
     setErrorMsg(null);
-    
+
     try {
       // Use NextAuth's signIn directly with worldcoin provider
-      const result = await signIn('worldcoin', { 
+      const result = await signIn('worldcoin', {
         // Simulate a verification for development
         redirect: false,
       });
-      
+
       if (result?.error) {
         console.error("Fallback verification failed:", result.error);
         setErrorMsg(`Verification failed: ${result.error}`);
@@ -255,20 +255,20 @@ export default function Verify() {
   return (
     <div className="flex flex-col items-end">
       {errorMsg && <div className="text-red-500 text-xs mb-1">Error: {errorMsg}</div>}
-      
+
       {isAuthenticated ? (
         <div className="flex items-center space-x-2">
-           <span className="text-sm text-white">Verified</span>
-           <button 
-              className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
-              onClick={handleSignOut}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing Out...' : 'Sign Out'}
-            </button>
+          <span className="text-sm text-white">Verified</span>
+          <button
+            className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+            onClick={handleSignOut}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Signing Out...' : 'Sign Out'}
+          </button>
         </div>
       ) : (
-        <button 
+        <button
           className="px-3 py-1 text-sm font-medium text-white bg-amber-700 rounded hover:bg-amber-800 disabled:opacity-50 transition duration-200"
           onClick={isMiniKitAvailable ? handleVerify : handleFallbackVerify}
           disabled={isLoading || status === 'loading'}

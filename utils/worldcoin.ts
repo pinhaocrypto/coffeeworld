@@ -31,14 +31,14 @@ export async function verifyWorldcoinProof(payload: WorldcoinProofPayload): Prom
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       return {
         success: false,
         error: data.error || 'Verification failed'
       };
     }
-    
+
     return {
       success: true,
       nullifier_hash: payload.nullifier_hash
