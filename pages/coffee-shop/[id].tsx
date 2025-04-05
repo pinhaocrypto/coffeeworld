@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import ReviewForm from '@/components/ReviewForm';
 import ReviewItem from '@/components/ReviewItem';
 import { Review } from '@/types/review';
-import Verify from '@/components/Verify';
+import WorldIDButton from '@/components/WorldIDButton';
 import CheckInButton from '@/components/CheckInButton';
 import CrowdStatus from '@/components/CrowdStatus';
 
@@ -148,7 +148,11 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
 
       {/* Reviews section */}
       <div className="mt-10">
-        <h2 className="text-2xl font-bold mb-6">Reviews</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-semibold">Reviews</h2>
+          {/* 使用新的 WorldIDButton 替換舊的 Verify 組件 */}
+          <WorldIDButton />
+        </div>
         
         {/* Review Form - Only for verified users */}
         <div className="mb-8">
@@ -160,7 +164,7 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
                 Verify with World ID to leave reviews and vote on other reviews. Your identity remains private while proving you're human.
               </p>
               <div className="flex justify-center">
-                <Verify />
+                <WorldIDButton />
               </div>
             </div>
           ) : (

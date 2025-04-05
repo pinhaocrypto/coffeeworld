@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { CrowdLevel, getCrowdLevel } from '@/types/checkin';
-import Verify from '@/components/Verify'; // Import the Verify component
+import WorldIDButton from '@/components/WorldIDButton'; // Import the WorldIDButton component
 
 interface CheckInButtonProps {
   coffeeShopId: string;
@@ -111,9 +111,11 @@ export default function CheckInButton({ coffeeShopId }: CheckInButtonProps) {
             </svg>
             Check In
           </button>
-          <div className="flex items-center justify-center mt-1">
-            <span className="text-xs text-gray-500 mr-2">Verify first:</span>
-            <Verify />
+          <p className="text-center mb-4">
+            Please verify with World ID to check in.
+          </p>
+          <div className="flex justify-center">
+            <WorldIDButton />
           </div>
           {error && (
             <div className="text-xs text-red-600 mt-1">
