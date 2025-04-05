@@ -38,6 +38,10 @@ export default function Verify() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isMiniKitAvailable, setIsMiniKitAvailable] = useState(false);
 
+  // Log session and status on render
+  console.log('[Verify Component Render] Session:', session);
+  console.log('[Verify Component Render] Status:', status);
+
   // Check if MiniKit is available (primarily in World App)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
@@ -187,6 +191,9 @@ export default function Verify() {
       setIsLoading(false);
     }
   };
+
+  // Log state before rendering the final JSX
+  console.log('[Verify Component Before Return] isLoading:', isLoading, 'errorMsg:', errorMsg, 'isMiniKitAvailable:', isMiniKitAvailable);
 
   // Render nothing if MiniKit is not available (or show a message)
   if (!isMiniKitAvailable) {
