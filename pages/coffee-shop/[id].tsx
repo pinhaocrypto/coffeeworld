@@ -108,14 +108,14 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
             </div>
           </div>
 
-          {/* Crowd Status and Check-In Section */}
+          {/* Crowd Status and Check-In Section - Optimized UI */}
           <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-100">
-            <h2 className="text-lg font-semibold mb-3 text-amber-800">Live Crowd Monitor</h2>
-            <div className="flex flex-col gap-4">
-              <CrowdStatus coffeeShopId={shop.id} />
-              
-              {/* Check-in Button */}
-              <div className="w-full p-4 bg-white rounded-md border border-amber-200 shadow-sm">
+            <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+              <div className="flex flex-col">
+                <h2 className="text-lg font-semibold mb-2 text-amber-800">Live Crowd Monitor</h2>
+                <CrowdStatus coffeeShopId={shop.id} />
+              </div>
+              <div className="md:w-1/2">
                 <CheckInButton coffeeShopId={shop.id} />
               </div>
             </div>
