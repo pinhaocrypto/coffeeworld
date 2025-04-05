@@ -25,7 +25,7 @@ const getWorldcoinAppId = () => {
 };
 
 export default function WorldIdAuthButton() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -34,6 +34,13 @@ export default function WorldIdAuthButton() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reset error message when session status changes
+  useEffect(() => {
+    if (status !== 'loading') {
+      setIsLoading(false);
+    }
+  }, [status]);
 
   // Check if running as a Mini App inside World App
   const isInWorldApp = mounted && typeof window !== 'undefined' && (
@@ -58,6 +65,35 @@ export default function WorldIdAuthButton() {
       // Format the proof for NextAuth
       const worldcoinProof = formatProofForAuth(proof);
       
+      // Log the proof for debugging
+      console.log('Worldcoin proof:', worldcoinProof);
+      
+      // First verify directly with our local API 
+      // (normally this would be done server-side during the NextAuth flow,
+      // but checking here helps with debugging)
+      try {
+        const verifyResponse = await fetch('/api/verify-worldcoin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(worldcoinProof),
+        });
+        
+        const verifyResult = await verifyResponse.json();
+        console.log('Pre-verification result:', verifyResult);
+        
+        if (!verifyResult.success) {
+          console.error('Pre-verification failed:', verifyResult);
+          setErrorMsg('Verification failed. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error during pre-verification:', error);
+        // Continue with auth flow even if pre-verification fails
+      }
+      
       // Sign in with NextAuth using the Worldcoin provider
       const result = await signIn('worldcoin', { 
         proof: worldcoinProof.proof,
@@ -72,6 +108,9 @@ export default function WorldIdAuthButton() {
         setErrorMsg('Authentication failed. Please try again.');
       } else if (result?.url) {
         window.location.href = result.url;
+      } else {
+        // If no error and no URL, likely successful but no redirect
+        window.location.reload();
       }
     } catch (error) {
       console.error('Error during verification:', error);
@@ -117,6 +156,9 @@ export default function WorldIdAuthButton() {
     return (
       <div>
         {errorMsg && <div className="text-red-600 text-xs mb-2">{errorMsg}</div>}
+        <div className="text-sm text-white mb-2">
+          Signed in as <span className="font-semibold">{session.user?.name || 'Worldcoin User'}</span>
+        </div>
         <button 
           className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
           onClick={handleSignOut}
@@ -165,6 +207,8 @@ export default function WorldIdAuthButton() {
             verification_level={VerificationLevel.Device}
             handleVerify={async (proof) => {
               // This is called when the proof is verified by IDKit
+              // In development mode, always return true
+              console.log('IDKit internal verification called');
               return true as any; // Force type compatibility
             }}
           >
