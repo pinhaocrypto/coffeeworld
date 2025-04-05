@@ -6,6 +6,6 @@
   "env": {
     "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCvFrcNWjQa1h0e8oqYTwXA1rSa5iimr8w",
     "NEXT_PUBLIC_WORLDCOIN_APP_ID": "app_6bd93d77f6ac5663b82b4a4894eb3417",
-    "NEXTAUTH_SECRET": "@nextauth_secret"
+    "NEXTAUTH_SECRET": "coffee-finder-demo-secret-key-1234"
   }
 }
