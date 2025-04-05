@@ -20,9 +20,16 @@ interface VerificationResult {
 // Verify a Worldcoin proof using the backend API
 export async function verifyWorldcoinProof(payload: WorldcoinProofPayload): Promise<VerificationResult> {
   try {
-    // In a production app, you would make a call to the Worldcoin verification API
-    // For example:
-    const response = await fetch('/api/verify-worldcoin', {
+    // For server-side verification, we need to use an absolute URL
+    // Get the base URL from environment or use a default
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
+                   (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    
+    // Create an absolute URL
+    const verifyUrl = new URL('/api/verify-worldcoin', baseUrl).toString();
+    
+    // Make the API call with the absolute URL
+    const response = await fetch(verifyUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
