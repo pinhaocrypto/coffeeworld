@@ -4,6 +4,7 @@ import AuthButton from '@/components/AuthButton';
 import CoffeeShopCard from '@/components/CoffeeShopCard';
 import { calculateDistance } from '@/utils/googleMaps';
 import { getCachedSearchResults, cacheSearchResults } from '@/utils/cacheUtils';
+import { getStorageItem, setStorageItem } from '@/utils/storage';
 
 // Interface for coffee shop data
 interface CoffeeShop {
@@ -39,9 +40,9 @@ export default function Home() {
 
   // Check if user has previously granted location permission
   useEffect(() => {
-    if (typeof window !== 'undefined' && session) {
-      // Check localStorage for previous permission
-      const storedPermission = localStorage.getItem('locationPermissionGranted');
+    if (session) {
+      // Safely check localStorage for previous permission
+      const storedPermission = getStorageItem('locationPermissionGranted');
       
       if (storedPermission === 'true') {
         // User previously granted permission, get location automatically
@@ -77,7 +78,7 @@ export default function Home() {
   const getUserLocation = () => {
     setLocationStatus('loading');
     
-    if (!navigator.geolocation) {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setLocationStatus('unavailable');
       setError('Geolocation is not supported by your browser.');
       setLoading(false);
@@ -91,10 +92,8 @@ export default function Home() {
         setUserLocation({ latitude, longitude });
         setLocationStatus('success');
         
-        // Store permission in localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('locationPermissionGranted', 'true');
-        }
+        // Store permission in localStorage safely
+        setStorageItem('locationPermissionGranted', 'true');
         
         fetchCoffeeShops(latitude, longitude, selectedRadius);
       },
@@ -105,10 +104,8 @@ export default function Home() {
           setLocationStatus('denied');
           setError('Location access was denied. Allow location access to find coffee shops near you.');
           
-          // Store denied permission in localStorage
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('locationPermissionGranted', 'false');
-          }
+          // Store denied permission in localStorage safely
+          setStorageItem('locationPermissionGranted', 'false');
         } else {
           setLocationStatus('error');
           setError('Unable to retrieve your location. Please try again later.');
@@ -126,35 +123,33 @@ export default function Home() {
       setError(null);
       
       // Check for cached results first
-      if (typeof window !== 'undefined') {
-        const cachedResults = getCachedSearchResults(latitude, longitude, radius);
-        if (cachedResults && cachedResults.length > 0) {
-          console.log(`Using ${cachedResults.length} cached coffee shops for ${radius}m radius`);
-          
-          // Add distance calculation to each coffee shop
-          const shopsWithDistance = cachedResults.map((shop: CoffeeShop) => {
-            if (shop.latitude && shop.longitude) {
-              const distance = calculateDistance(
-                latitude,
-                longitude,
-                shop.latitude,
-                shop.longitude
-              );
-              return { ...shop, distance };
-            }
-            return shop;
-          });
-          
-          // Sort by distance (nearest first)
-          shopsWithDistance.sort((a: CoffeeShop, b: CoffeeShop) => {
-            if (a.distance === undefined || b.distance === undefined) return 0;
-            return a.distance - b.distance;
-          });
-          
-          setCoffeeShops(shopsWithDistance);
-          setLoading(false);
-          return;
-        }
+      const cachedResults = getCachedSearchResults(latitude, longitude, radius);
+      if (cachedResults && cachedResults.length > 0) {
+        console.log(`Using ${cachedResults.length} cached coffee shops for ${radius}m radius`);
+        
+        // Add distance calculation to each coffee shop
+        const shopsWithDistance = cachedResults.map((shop: CoffeeShop) => {
+          if (shop.latitude && shop.longitude) {
+            const distance = calculateDistance(
+              latitude,
+              longitude,
+              shop.latitude,
+              shop.longitude
+            );
+            return { ...shop, distance };
+          }
+          return shop;
+        });
+        
+        // Sort by distance (nearest first)
+        shopsWithDistance.sort((a: CoffeeShop, b: CoffeeShop) => {
+          if (a.distance === undefined || b.distance === undefined) return 0;
+          return a.distance - b.distance;
+        });
+        
+        setCoffeeShops(shopsWithDistance);
+        setLoading(false);
+        return;
       }
       
       // No cache available, fetch from API
@@ -190,9 +185,7 @@ export default function Home() {
       setCoffeeShops(shopsWithDistance);
       
       // Cache the results for future use
-      if (typeof window !== 'undefined' && data.coffeeShops.length > 0) {
-        cacheSearchResults(latitude, longitude, radius, data.coffeeShops);
-      }
+      cacheSearchResults(latitude, longitude, radius, data.coffeeShops);
     } catch (err) {
       console.error('Error fetching coffee shops:', err);
       setError('Failed to load coffee shops. Please try again.');
@@ -211,23 +204,29 @@ export default function Home() {
 
   // Retry getting location and fetching coffee shops with cache clearing option
   const handleRetry = useCallback((clearCache = false) => {
-    if (clearCache && typeof window !== 'undefined') {
+    if (clearCache) {
       // Clear all coffee shop caches
       const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('coffee_shops_')) {
-          keysToRemove.push(key);
+      
+      // Safely access localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('coffeeShops_')) {
+            keysToRemove.push(key);
+          }
         }
+        
+        // Remove all cache keys
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+        });
       }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log(`Cleared ${keysToRemove.length} cached search results`);
     }
     
-    if (session) {
-      getUserLocation();
-    }
-  }, [session]);
+    setError(null);
+    getUserLocation();
+  }, []);
 
   return (
     <div className="space-y-8">
