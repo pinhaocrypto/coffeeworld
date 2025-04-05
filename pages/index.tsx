@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import AuthButton from '@/components/AuthButton';
 import CoffeeShopCard from '@/components/CoffeeShopCard';
 import { calculateDistance } from '@/utils/googleMaps';
+import { getCachedSearchResults, cacheSearchResults } from '@/utils/cacheUtils';
 
 // Interface for coffee shop data
 interface CoffeeShop {
@@ -85,6 +86,40 @@ export default function Home() {
       setLoading(true);
       setError(null);
       
+      // Check for cached results first
+      if (typeof window !== 'undefined') {
+        const cachedResults = getCachedSearchResults(latitude, longitude, radius);
+        if (cachedResults && cachedResults.length > 0) {
+          console.log(`Using ${cachedResults.length} cached coffee shops for ${radius}m radius`);
+          
+          // Add distance calculation to each coffee shop
+          const shopsWithDistance = cachedResults.map((shop: CoffeeShop) => {
+            if (shop.latitude && shop.longitude) {
+              const distance = calculateDistance(
+                latitude,
+                longitude,
+                shop.latitude,
+                shop.longitude
+              );
+              return { ...shop, distance };
+            }
+            return shop;
+          });
+          
+          // Sort by distance (nearest first)
+          shopsWithDistance.sort((a: CoffeeShop, b: CoffeeShop) => {
+            if (a.distance === undefined || b.distance === undefined) return 0;
+            return a.distance - b.distance;
+          });
+          
+          setCoffeeShops(shopsWithDistance);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // No cache available, fetch from API
+      console.log(`Fetching coffee shops from API for ${radius}m radius`);
       const response = await fetch(`/api/coffeeShops?latitude=${latitude}&longitude=${longitude}&radius=${radius}`);
       
       if (!response.ok) {
@@ -114,6 +149,11 @@ export default function Home() {
       });
       
       setCoffeeShops(shopsWithDistance);
+      
+      // Cache the results for future use
+      if (typeof window !== 'undefined' && data.coffeeShops.length > 0) {
+        cacheSearchResults(latitude, longitude, radius, data.coffeeShops);
+      }
     } catch (err) {
       console.error('Error fetching coffee shops:', err);
       setError('Failed to load coffee shops. Please try again.');
@@ -130,12 +170,25 @@ export default function Home() {
     }
   };
 
-  // Retry getting location and fetching coffee shops
-  const handleRetry = () => {
+  // Retry getting location and fetching coffee shops with cache clearing option
+  const handleRetry = useCallback((clearCache = false) => {
+    if (clearCache && typeof window !== 'undefined') {
+      // Clear all coffee shop caches
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('coffee_shops_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log(`Cleared ${keysToRemove.length} cached search results`);
+    }
+    
     if (session) {
       getUserLocation();
     }
-  };
+  }, [session]);
 
   return (
     <div className="space-y-8">
@@ -156,7 +209,7 @@ export default function Home() {
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-4">
               <p>{error}</p>
               <button 
-                onClick={handleRetry}
+                onClick={() => handleRetry(false)}
                 className="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
               >
                 Try Again
@@ -168,7 +221,7 @@ export default function Home() {
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-4">
               <p>{error}</p>
               <button 
-                onClick={handleRetry}
+                onClick={() => handleRetry(false)}
                 className="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
               >
                 Try Again
@@ -186,7 +239,7 @@ export default function Home() {
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-4">
               <p>{error}</p>
               <button 
-                onClick={handleRetry}
+                onClick={() => handleRetry(false)}
                 className="mt-2 px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
               >
                 Try Again
@@ -232,12 +285,20 @@ export default function Home() {
               <p className="text-lg">No coffee shops found within {selectedRadius/1000}km.</p>
               <p className="text-gray-600 mt-2">Try increasing your search radius or check back later!</p>
               {locationStatus === 'success' && (
-                <button 
-                  onClick={handleRetry}
-                  className="mt-4 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
-                >
-                  Retry Search
-                </button>
+                <div className="flex justify-center space-x-4 mt-4">
+                  <button 
+                    onClick={() => handleRetry(false)}
+                    className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+                  >
+                    Retry Search
+                  </button>
+                  <button 
+                    onClick={() => handleRetry(true)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                  >
+                    Clear Cache & Retry
+                  </button>
+                </div>
               )}
             </div>
           )}

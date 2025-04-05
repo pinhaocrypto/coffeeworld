@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "@next_public_google_maps_api_key",
+    "NEXT_PUBLIC_WORLDCOIN_APP_ID": "@next_public_worldcoin_app_id",
+    "NEXTAUTH_SECRET": "@nextauth_secret"
+  }
+}

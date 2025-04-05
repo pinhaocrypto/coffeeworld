@@ -18,6 +18,8 @@ interface CoffeeShop {
   reviewCount: number;
   description?: string;
   placeId?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface CoffeeShopDetailProps {
@@ -195,27 +197,51 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const { id } = context.query;
   
   try {
-    // In a real application, you would fetch the coffee shop data from your API
-    // For now, we'll use mock data
-    const shop = {
-      id: id as string,
-      name: 'Brew Haven',
-      address: '123 Coffee Lane, Seattle, WA',
-      image: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=800&q=80',
-      rating: 4.7,
-      reviewCount: 42,
-      description: 'A cozy local coffee shop with artisanal brews and a warm atmosphere. Perfect for both working and casual meetups. Our baristas are true coffee experts, and we source our beans directly from sustainable farms around the world.',
-      placeId: 'ChIJN1t_tDeuEmsRUsoyG83frY4' // Example Google Maps place ID
-    };
+    // Try to find in mock data first (this is more reliable)
+    let shop: CoffeeShop | null = null;
+    
+    // Check if this is a Google Places ID (usually starts with "ChIJ")
+    const isGooglePlacesId = typeof id === 'string' && id.startsWith('ChIJ');
+    
+    if (isGooglePlacesId) {
+      // For Google Places IDs, create a basic shop object from the ID and query parameters
+      const { name, address, image, rating } = context.query;
+      
+      shop = {
+        id: id as string,
+        name: (name as string) || 'Coffee Shop',
+        address: (address as string) || 'Address unavailable',
+        image: (image as string) || 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=800&q=80',
+        rating: parseFloat((rating as string) || '0'),
+        reviewCount: 0,
+        latitude: 0,
+        longitude: 0,
+        placeId: id as string
+      };
+    } else {
+      // For mock IDs, fetch from our API
+      const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/coffeeShops?id=${id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        shop = data.coffeeShops?.[0];
+      }
+    }
+    
+    if (!shop) {
+      return {
+        notFound: true,
+      };
+    }
     
     // Fetch initial reviews
-    // In a real application, this would come from your API
-    const initialReviews: Review[] = [];
+    const reviewsResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/reviews?coffeeShopId=${id}`);
+    const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : { reviews: [] };
     
     return {
       props: {
         shop,
-        initialReviews,
+        initialReviews: reviewsData.reviews || [],
       },
     };
   } catch (error) {

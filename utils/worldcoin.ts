@@ -1,10 +1,14 @@
 // This file simulates Worldcoin verification for demonstration purposes
 // In a real application, you would use the actual Worldcoin API
 
+import { ISuccessResult } from '@worldcoin/idkit';
+
+// Interfaces for Worldcoin verification
 interface WorldcoinProofPayload {
-  proof: string;
-  nullifier_hash: string;
   merkle_root: string;
+  nullifier_hash: string;
+  proof: string;
+  verification_level?: string;
 }
 
 interface VerificationResult {
@@ -13,43 +17,32 @@ interface VerificationResult {
   error?: string;
 }
 
-// Simulated verification of a Worldcoin zero-knowledge proof
+// Verify a Worldcoin proof using the backend API
 export async function verifyWorldcoinProof(payload: WorldcoinProofPayload): Promise<VerificationResult> {
-  // In a real implementation, you would call the Worldcoin API to verify the proof
-  // For this demo, we'll simulate successful verification with some random checks
-  
   try {
-    // Simulate API latency
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // In a production app, you would make a call to the Worldcoin verification API
+    // For example:
+    const response = await fetch('/api/verify-worldcoin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
     
-    // Check if all required fields are present
-    if (!payload.proof || !payload.nullifier_hash || !payload.merkle_root) {
+    if (!response.ok) {
       return {
         success: false,
-        error: 'Missing required fields in the proof payload'
+        error: data.error || 'Verification failed'
       };
     }
     
-    // In a real app, you would verify these values against the Worldcoin API
-    // For demo purposes, consider all properly formatted proofs as valid
-    const isValidFormat = 
-      payload.proof.length > 10 &&
-      payload.nullifier_hash.length > 10 &&
-      payload.merkle_root.length > 10;
-    
-    if (!isValidFormat) {
-      return {
-        success: false,
-        error: 'Invalid proof format'
-      };
-    }
-    
-    // Simulate successful verification
     return {
       success: true,
       nullifier_hash: payload.nullifier_hash
     };
-    
   } catch (error) {
     console.error('Error verifying Worldcoin proof:', error);
     return {
@@ -59,15 +52,12 @@ export async function verifyWorldcoinProof(payload: WorldcoinProofPayload): Prom
   }
 }
 
-// Generate a simulated Worldcoin proof for testing
-export function generateMockWorldcoinProof(): WorldcoinProofPayload {
-  const randomString = (length: number) => {
-    return [...Array(length)].map(() => Math.random().toString(36)[2]).join('');
-  };
-  
+// Format IDKit result for NextAuth
+export function formatProofForAuth(result: ISuccessResult): WorldcoinProofPayload {
   return {
-    proof: randomString(64),
-    nullifier_hash: randomString(64),
-    merkle_root: randomString(64)
+    merkle_root: result.merkle_root,
+    nullifier_hash: result.nullifier_hash,
+    proof: result.proof,
+    verification_level: result.verification_level
   };
 }

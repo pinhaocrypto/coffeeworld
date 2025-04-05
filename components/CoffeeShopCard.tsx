@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { formatDistance } from '@/utils/googleMaps';
 
 interface CoffeeShop {
   id: string;
@@ -8,6 +9,9 @@ interface CoffeeShop {
   image: string;
   rating: number;
   reviewCount: number;
+  distance?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface CoffeeShopCardProps {
@@ -58,9 +62,16 @@ export default function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
     return stars;
   };
 
+  // Create query params for all the shop data to avoid API calls
+  const detailUrl = `/coffee-shop/${shop.id}?` + 
+    `name=${encodeURIComponent(shop.name)}&` +
+    `address=${encodeURIComponent(shop.address)}&` +
+    `image=${encodeURIComponent(shop.image)}&` +
+    `rating=${shop.rating}`;
+
   return (
-    <div className="card hover:shadow-lg transition-shadow duration-300">
-      <Link href={`/coffee-shop/${shop.id}`}>
+    <Link href={detailUrl} className="block h-full">
+      <div className="card hover:shadow-lg transition-shadow duration-300">
         <div className="relative h-48 w-full">
           <Image 
             src={shop.image}
@@ -80,11 +91,16 @@ export default function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
               ({shop.reviewCount} {shop.reviewCount === 1 ? 'review' : 'reviews'})
             </span>
           </div>
+          {shop.distance !== undefined && (
+            <div className="mt-1 text-gray-500 text-sm">
+              {formatDistance(shop.distance)}
+            </div>
+          )}
           <button className="btn btn-primary w-full mt-2">
             View Details
           </button>
         </div>
-      </Link>
-    </div>
+      </div>
+    </Link>
   );
 }

@@ -1,82 +1,52 @@
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { useMinikit, WalletAuthInput } from './minikit-provider';
-import { generateMockWorldcoinProof } from '../utils/worldcoin';
+import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';
+import { formatProofForAuth } from '../utils/worldcoin';
 
 export default function AuthButton() {
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isInitialized, isInstalled, walletAuth, walletAddress } = useMinikit();
+  const [showDevLogin, setShowDevLogin] = useState(false);
+  const [username, setUsername] = useState('');
 
-  const handleSignIn = async () => {
+  const handleSignIn = async (result: ISuccessResult) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('Starting Worldcoin authentication...');
-      console.log('MiniKit initialized:', isInitialized);
-      console.log('MiniKit installed:', isInstalled);
+      console.log('Worldcoin verification successful:', result);
       
-      if (isInitialized && isInstalled) {
-        // Try using real Worldcoin wallet auth
-        console.log('Attempting to use MiniKit wallet auth');
-        
-        try {
-          // Generate a random nonce - in a real app, get this from server for security
-          const nonce = Math.random().toString(36).substring(2, 15);
-          
-          // Define the wallet auth parameters
-          const authParams: WalletAuthInput = {
-            nonce: nonce,
-            expirationTime: new Date(Date.now() + 1000 * 60 * 60), // 1 hour from now
-            statement: 'Sign in to Coffee Finder',
-          };
-          
-          const response = await walletAuth(authParams);
-          console.log('Wallet auth response:', response);
-          
-          if (response.finalPayload.status === 'success') {
-            const successPayload = response.finalPayload;
-            console.log('Successful wallet auth, signing in with NextAuth');
-            console.log('Wallet address:', walletAddress);
-            
-            // In a real app, you would verify the signature on the server side
-            // Here, we're just passing the data to NextAuth
-            await signIn('worldcoin', { 
-              // We're still using the NextAuth Worldcoin provider, but with wallet auth data
-              // Our mock implementation in nextauth.js should handle this
-              address: successPayload.address,
-              signature: successPayload.signature,
-              message: successPayload.message,
-              callbackUrl: '/' 
-            });
-            return;
-          } else {
-            console.warn('Wallet auth failed, falling back to mock proof', response);
-            setError('Worldcoin wallet authentication failed. Using mock authentication instead.');
-          }
-        } catch (authError) {
-          console.error('Error with wallet auth:', authError);
-          setError('Error connecting to Worldcoin wallet. Using mock authentication instead.');
-        }
-      } else {
-        console.log('MiniKit not initialized or installed');
-        setError('Worldcoin not available. Using mock authentication instead.');
-      }
+      // Format the proof for NextAuth
+      const worldcoinProof = formatProofForAuth(result);
       
-      // Fallback to mock proof if MiniKit failed or is not initialized/installed
-      console.log('Using mock Worldcoin proof as fallback');
-      const mockProof = generateMockWorldcoinProof();
-      
+      // Sign in with NextAuth using the Worldcoin provider
       await signIn('worldcoin', { 
-        proof: mockProof.proof,
-        nullifier_hash: mockProof.nullifier_hash,
-        merkle_root: mockProof.merkle_root,
+        proof: worldcoinProof.proof,
+        nullifier_hash: worldcoinProof.nullifier_hash,
+        merkle_root: worldcoinProof.merkle_root,
+        verification_level: worldcoinProof.verification_level,
         callbackUrl: '/' 
       });
     } catch (error) {
       console.error('Error during sign in:', error);
+      setError('Failed to authenticate. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleDevSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await signIn('development', { 
+        username: username || 'dev-user',
+        callbackUrl: '/' 
+      });
+    } catch (error) {
+      console.error('Error during dev sign in:', error);
       setError('Failed to authenticate. Please try again.');
       setIsLoading(false);
     }
@@ -108,63 +78,116 @@ export default function AuthButton() {
 
   if (session) {
     return (
-      <div className="flex flex-col items-center space-y-3">
-        <div className="bg-white p-3 rounded-lg shadow-sm">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-800">Verified with Worldcoin</p>
-              <p className="text-sm text-gray-500">Welcome, {session.user?.name || 'User'}</p>
-              {walletAddress && (
-                <p className="text-xs text-gray-400">Wallet: {walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}</p>
-              )}
-            </div>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="text-sm">
+          <span className="font-medium">Signed in as </span>
+          <span className="font-bold">{session.user?.name}</span>
         </div>
-        <button 
+        <button
           onClick={handleSignOut}
           disabled={isLoading}
-          className="btn btn-secondary"
+          className="btn btn-outline"
         >
-          {isLoading ? 'Signing out...' : 'Sign out'}
+          {isLoading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Signing out...
+            </>
+          ) : (
+            'Sign out'
+          )}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center space-y-3">
+    <div className="flex flex-col gap-4">
       {error && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-md text-sm mb-2">
+        <div className="text-sm text-red-600 mb-2">
           {error}
         </div>
       )}
-      <button 
-        onClick={handleSignIn}
-        disabled={isLoading}
-        className="btn btn-primary"
-      >
-        {isLoading ? (
-          <>
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Connecting...
-          </>
-        ) : (
-          <>
-            <svg className="mr-2" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Login with Worldcoin
-          </>
-        )}
-      </button>
+      
+      {showDevLogin ? (
+        <form onSubmit={handleDevSignIn} className="flex flex-col gap-2">
+          <div>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Developer username"
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn btn-primary"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in (Dev)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDevLogin(false)}
+              className="btn btn-outline"
+            >
+              Back
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <IDKitWidget
+            app_id={process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID ?? "app_staging_d89b3a6453cf9bb7eb9902f62e5d2639"}
+            action="login"
+            onSuccess={handleSignIn}
+            verification_level="orb"
+            {...{} as any}
+          >
+            {({ open }) => (
+              <button
+                onClick={open}
+                disabled={isLoading}
+                className="btn btn-primary flex items-center"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20 40C31.0457 40 40 31.0457 40 20C40 8.9543 31.0457 0 20 0C8.9543 0 0 8.9543 0 20C0 31.0457 8.9543 40 20 40Z" fill="white"/>
+                      <path d="M20 36.6667C29.2048 36.6667 36.6667 29.2048 36.6667 20C36.6667 10.7952 29.2048 3.33334 20 3.33334C10.7953 3.33334 3.33337 10.7952 3.33337 20C3.33337 29.2048 10.7953 36.6667 20 36.6667Z" fill="currentColor"/>
+                      <path d="M20 28.3333C24.6024 28.3333 28.3334 24.6024 28.3334 20C28.3334 15.3976 24.6024 11.6667 20 11.6667C15.3976 11.6667 11.6667 15.3976 11.6667 20C11.6667 24.6024 15.3976 28.3333 20 28.3333Z" fill="white"/>
+                    </svg>
+                    Sign in with Worldcoin
+                  </>
+                )}
+              </button>
+            )}
+          </IDKitWidget>
+          
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowDevLogin(true)}
+              className="text-sm text-gray-500 hover:text-amber-600 underline"
+            >
+              Use development login (for testing)
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

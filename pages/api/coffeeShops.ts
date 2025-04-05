@@ -101,7 +101,7 @@ async function fetchGooglePlaces(latitude: number, longitude: number, radius: nu
     }
     
     // Create the Google Places API URL
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=cafe&keyword=coffee&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=restaurant|cafe|bakery&keyword=coffee|茶|咖啡&key=${apiKey}`;
     console.log('Requesting Google Places API:', url.replace(apiKey, '[REDACTED]'));
     
     // Make the API request
@@ -180,10 +180,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { latitude, longitude, radius } = req.query;
+    const { latitude, longitude, radius, id } = req.query;
     
     // Log for debugging
-    console.log('API request received with coordinates:', { latitude, longitude, radius });
+    console.log('API request received with:', { latitude, longitude, radius, id });
+    
+    // If an ID is provided, return that specific coffee shop
+    if (id) {
+      // Check in mock data first
+      const mockShop = mockCoffeeShops.find(shop => shop.id === id);
+      if (mockShop) {
+        return res.status(200).json({ coffeeShops: [mockShop] });
+      }
+      
+      // If not in mock data and API key is available, try to fetch from Google
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      if (!apiKey || apiKey === 'your_google_maps_api_key') {
+        return res.status(404).json({ error: 'Coffee shop not found' });
+      }
+      
+      // Here you would typically fetch the specific shop from Google Places API
+      // For now, return a 404 if not found in mock data
+      return res.status(404).json({ error: 'Coffee shop not found' });
+    }
     
     // Check if Google Maps API key is configured
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -196,9 +215,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ coffeeShops: filteredShops });
     }
     
-    // Check for required parameters
+    // Check for required parameters for location-based search
     if (!latitude || !longitude) {
-      return res.status(400).json({ error: 'Latitude and longitude are required' });
+      return res.status(400).json({ error: 'Latitude and longitude are required for location-based search' });
     }
     
     // Convert to numbers
@@ -210,9 +229,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const coffeeShops = await fetchGooglePlaces(lat, lng, searchRadius);
     
     return res.status(200).json({ coffeeShops });
-    
   } catch (error) {
-    console.error('Error in coffee shops API:', error);
-    return res.status(500).json({ error: 'Server error' });
+    console.error('Error fetching coffee shops:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }

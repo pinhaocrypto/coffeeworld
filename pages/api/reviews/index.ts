@@ -36,62 +36,72 @@ let mockReviews: Review[] = [
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Check if user is authenticated
-  const session = await getSession({ req });
-  if (!session) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
+  try {
+    // Check if user is authenticated
+    const session = await getSession({ req });
+    if (!session) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
 
-  // GET: Fetch reviews for a specific coffee shop
-  if (req.method === 'GET') {
-    const { coffeeShopId } = req.query;
-    
-    if (!coffeeShopId) {
-      return res.status(400).json({ error: 'Coffee shop ID is required' });
+    // GET: Fetch reviews for a specific coffee shop
+    if (req.method === 'GET') {
+      const { coffeeShopId } = req.query;
+      
+      if (!coffeeShopId) {
+        return res.status(400).json({ error: 'Coffee shop ID is required' });
+      }
+      
+      const shopReviews = mockReviews.filter(
+        review => review.coffeeShopId === coffeeShopId
+      );
+      
+      return res.status(200).json({ reviews: shopReviews });
     }
     
-    const shopReviews = mockReviews.filter(
-      review => review.coffeeShopId === coffeeShopId
-    );
-    
-    return res.status(200).json({ reviews: shopReviews });
-  }
-  
-  // POST: Add a new review
-  else if (req.method === 'POST') {
-    const { coffeeShopId, message, rating } = req.body;
-    
-    if (!coffeeShopId || !message || rating === undefined) {
-      return res.status(400).json({ error: 'Coffee shop ID, message, and rating are required' });
+    // POST: Add a new review
+    else if (req.method === 'POST') {
+      const { coffeeShopId, message, rating } = req.body;
+      
+      console.log('Review submission received:', { coffeeShopId, message, rating });
+      console.log('User session:', session.user);
+      
+      if (!coffeeShopId || !message || rating === undefined) {
+        return res.status(400).json({ error: 'Coffee shop ID, message, and rating are required' });
+      }
+      
+      // Ensure session.user exists before accessing its properties
+      if (!session.user) {
+        return res.status(401).json({ error: 'User information not found' });
+      }
+      
+      // Create a new review
+      const newReview: Review = {
+        id: uuidv4(),
+        coffeeShopId,
+        userId: session.user.email || 'unknown-user', 
+        userName: session.user.name || 'Anonymous User',
+        message,
+        rating,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        votes: []
+      };
+      
+      // Add to mock database
+      mockReviews.push(newReview);
+      
+      console.log('New review added:', newReview);
+      
+      return res.status(201).json({ review: newReview });
     }
     
-    // Ensure session.user exists before accessing its properties
-    if (!session.user) {
-      return res.status(401).json({ error: 'User information not found' });
+    // Method not allowed
+    else {
+      res.setHeader('Allow', ['GET', 'POST']);
+      return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
     }
-    
-    // Create a new review
-    const newReview: Review = {
-      id: uuidv4(),
-      coffeeShopId,
-      userId: session.user.email || 'unknown-user', 
-      userName: session.user.name || 'Anonymous User',
-      message,
-      rating,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      votes: []
-    };
-    
-    // Add to mock database
-    mockReviews.push(newReview);
-    
-    return res.status(201).json({ review: newReview });
-  }
-  
-  // Method not allowed
-  else {
-    res.setHeader('Allow', ['GET', 'POST']);
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+  } catch (error) {
+    console.error('Error in reviews API:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
