@@ -4,11 +4,12 @@ export interface Review {
   coffeeShopId: string;
   userId: string;
   userName: string;
-  message: string;
+  content: string;  // Changed from 'message' to match API response
   rating: number;
-  createdAt: string;
-  updatedAt: string;
-  votes: Vote[];
+  date: string;     // Changed from 'createdAt' to match API response
+  upvotes: number;  // Added to match API response
+  downvotes: number; // Added to match API response
+  userVote: 'up' | 'down' | null; // Added to match API response
 }
 
 // Vote interface for storing user votes on reviews

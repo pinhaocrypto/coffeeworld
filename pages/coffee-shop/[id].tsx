@@ -49,6 +49,7 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
       setIsLoading(true);
       setError(null);
       
+      console.log('Fetching reviews for coffee shop:', shop.id);
       const response = await fetch(`/api/reviews?coffeeShopId=${shop.id}`);
       
       if (!response.ok) {
@@ -56,6 +57,7 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
       }
       
       const data = await response.json();
+      console.log('Reviews fetched:', data);
       setReviews(data.reviews || []);
     } catch (err) {
       console.error('Error fetching reviews:', err);
@@ -122,23 +124,24 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
             </div>
           )}
 
-          {/* Google Maps link if available */}
-          {shop.placeId && (
-            <div className="mt-4">
-              <a 
-                href={`https://www.google.com/maps/place/?q=place_id:${shop.placeId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 flex items-center"
-              >
-                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                View on Google Maps
-              </a>
-            </div>
-          )}
+          {/* Google Maps link - Updated to work with either placeId or coordinates */}
+          <div className="mt-4">
+            <a 
+              href={shop.placeId 
+                ? `https://www.google.com/maps/place/?q=place_id:${shop.placeId}` 
+                : `https://www.google.com/maps/search/?api=1&query=${shop.latitude},${shop.longitude}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 flex items-center"
+            >
+              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              View on Google Maps
+            </a>
+          </div>
         </div>
       </div>
 

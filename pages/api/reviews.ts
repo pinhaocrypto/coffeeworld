@@ -85,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id: 'review-1',
           userId: 'user-1',
           userName: 'Coffee Lover',
-          coffeeShopId: coffeeShopId,
+          coffeeShopId: coffeeShopId as string,
           rating: 4.5,
           content: 'Great atmosphere and amazing coffee! The baristas really know their craft.',
           date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id: 'review-2',
           userId: 'user-2',
           userName: 'Morning Person',
-          coffeeShopId: coffeeShopId,
+          coffeeShopId: coffeeShopId as string,
           rating: 5,
           content: 'Best cappuccino in town! I come here every morning before work.',
           date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days ago
@@ -107,6 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       ];
       
+      // Always return mock reviews for demo purposes
       return res.status(200).json({
         reviews: mockReviews
       });
