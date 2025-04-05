@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
-import { signIn } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import { formatProofForAuth } from '@/utils/worldcoin';
 
 // Mock structure for World App credential that matches ISuccessResult
 interface WorldAppCredential {
@@ -15,6 +16,7 @@ interface WorldAppCredential {
 export default function WorldIdAuthButton() {
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Handle client-side only rendering
   useEffect(() => {
@@ -28,11 +30,54 @@ export default function WorldIdAuthButton() {
      !!window.parent && window.parent !== window);
 
   const handleVerify = async (proof: ISuccessResult) => {
-    // Handle successful verification by signing in with credentials
-    await signIn('credentials', {
-      proof: JSON.stringify(proof),
-      redirect: false
-    });
+    setIsLoading(true);
+    try {
+      // Format the proof for NextAuth
+      const worldcoinProof = formatProofForAuth(proof);
+      
+      // Sign in with NextAuth using the Worldcoin provider
+      const result = await signIn('worldcoin', { 
+        proof: worldcoinProof.proof,
+        nullifier_hash: worldcoinProof.nullifier_hash,
+        merkle_root: worldcoinProof.merkle_root,
+        verification_level: worldcoinProof.verification_level,
+        redirect: false,
+      });
+      
+      if (result?.error) {
+        console.error('Sign in error:', result.error);
+      } else if (result?.url) {
+        window.location.href = result.url;
+      }
+    } catch (error) {
+      console.error('Error during verification:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSignOut = async () => {
+    setIsLoading(true);
+    try {
+      // Clear any stored permission and authentication data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('locationPermissionGranted');
+        localStorage.removeItem('worldcoin_session');
+      }
+      
+      // Use redirect: false to prevent client-side errors
+      await signOut({ 
+        callbackUrl: '/',
+        redirect: false
+      });
+      
+      // Force reload if needed to clear state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during sign out:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!mounted) return null;
@@ -41,9 +86,10 @@ export default function WorldIdAuthButton() {
     return (
       <button 
         className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
-        onClick={() => signIn('credentials', { action: 'logout', redirect: false })}
+        onClick={handleSignOut}
+        disabled={isLoading}
       >
-        Sign Out
+        {isLoading ? 'Signing Out...' : 'Sign Out'}
       </button>
     );
   }
@@ -65,24 +111,29 @@ export default function WorldIdAuthButton() {
             };
             handleVerify(worldAppCredential);
           }}
+          disabled={isLoading}
         >
-          Verify with World ID
+          {isLoading ? 'Verifying...' : 'Verify with World ID'}
         </button>
       ) : (
-        // Regular IDKit widget for web users
+        // Regular web UI with IDKit widget
         <IDKitWidget
           app_id={process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID as `app_${string}` || "app_6bd93d77f6ac5663b82b4a4894eb3417"}
-          action="coffee-world-login"
+          action="coffee-world-auth"
           onSuccess={handleVerify}
           verification_level={VerificationLevel.Device}
-          handleVerify={() => Promise.resolve()}
+          handleVerify={async (proof) => {
+            // This is called when the proof is verified by IDKit
+            return true as any; // Force type compatibility
+          }}
         >
           {({ open }) => (
             <button 
               className="px-4 py-2 text-sm font-medium text-white bg-amber-700 rounded-md hover:bg-amber-800 focus:outline-none"
               onClick={open}
+              disabled={isLoading}
             >
-              Verify with World ID
+              {isLoading ? 'Verifying...' : 'Sign in with World ID'}
             </button>
           )}
         </IDKitWidget>

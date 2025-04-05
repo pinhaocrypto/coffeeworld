@@ -54,7 +54,29 @@ export default function AuthButton() {
 
   const handleSignOut = async () => {
     setIsLoading(true);
-    await signOut({ callbackUrl: '/' });
+    
+    try {
+      // Clear any stored permission and authentication data
+      if (typeof window !== 'undefined') {
+        // Clear location permission
+        localStorage.removeItem('locationPermissionGranted');
+        
+        // Clear any other auth-related storage
+        localStorage.removeItem('worldcoin_session');
+      }
+      
+      // Use callbackUrl and redirect: false to prevent client-side errors
+      await signOut({ 
+        callbackUrl: '/',
+        redirect: false
+      });
+      
+      // Force reload if needed to clear state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      setIsLoading(false);
+    }
   };
 
   // Reset loading state when session status changes
