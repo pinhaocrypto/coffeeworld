@@ -45,21 +45,35 @@ export default function Verify() {
   // Check if MiniKit is available (primarily in World App)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
+    let mounted = true; // Track component mount state
+
     if (typeof window !== 'undefined') {
       try {
-        // @ts-ignore
-        const initialCheck = !!(window.MiniKit && typeof window.MiniKit.isInstalled === 'function');
-        if (initialCheck) {
-          setIsMiniKitAvailable(true);
+        // Safe check for MiniKit
+        const hasMiniKit = typeof window !== 'undefined' && 
+                        window.hasOwnProperty('MiniKit') && 
+                        // @ts-ignore - MiniKit is injected by World App
+                        window.MiniKit && 
+                        // @ts-ignore
+                        typeof window.MiniKit.isInstalled === 'function';
+                        
+        if (hasMiniKit) {
+          if (mounted) setIsMiniKitAvailable(true);
           return;
         }
         
         // Add delayed check as MiniKit might initialize later
         timeoutId = setTimeout(() => {
           try {
-            // @ts-ignore
-            const miniKitLoaded = !!(window.MiniKit && typeof window.MiniKit.isInstalled === 'function');
-            if (miniKitLoaded) {
+            // Repeat the same safe check
+            const miniKitLoaded = typeof window !== 'undefined' && 
+                            window.hasOwnProperty('MiniKit') && 
+                            // @ts-ignore
+                            window.MiniKit && 
+                            // @ts-ignore
+                            typeof window.MiniKit.isInstalled === 'function';
+                            
+            if (miniKitLoaded && mounted) {
               console.log('MiniKit detected after delay');
               setIsMiniKitAvailable(true);
             }
@@ -70,11 +84,13 @@ export default function Verify() {
 
       } catch (error) {
         console.error('Error checking MiniKit availability:', error);
-        setIsMiniKitAvailable(false);
+        if (mounted) setIsMiniKitAvailable(false);
       }
     }
+    
     // Cleanup timeout on unmount
     return () => {
+      mounted = false;
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
@@ -82,8 +98,15 @@ export default function Verify() {
   }, []);
 
   const handleVerify = useCallback(async () => {
-    // @ts-ignore
-    if (typeof window === 'undefined' || !window.MiniKit || typeof window.MiniKit.commandsAsync?.verify !== 'function') {
+    // Enhanced safety check for MiniKit availability
+    if (
+      typeof window === 'undefined' || 
+      !window.hasOwnProperty('MiniKit') || 
+      // @ts-ignore
+      !window.MiniKit || 
+      // @ts-ignore
+      typeof window.MiniKit.commandsAsync?.verify !== 'function'
+    ) {
       console.warn("Tried to invoke 'verify', but MiniKit or command is not available.");
       setErrorMsg("World App integration not available or ready.");
       return;
@@ -107,17 +130,22 @@ export default function Verify() {
       const response = await window.MiniKit.commandsAsync.verify(verifyPayload);
       console.log("MiniKit verification response:", response);
 
-      // Extract the finalPayload from response
-      const { finalPayload } = response;
-
-      // Handle command error
-      if (finalPayload.status === "error") {
+      // Safely extract the finalPayload from response with defensive coding
+      if (!response || typeof response !== 'object') {
+        throw new Error("Invalid response from MiniKit verification");
+      }
+      
+      const finalPayload = response.finalPayload || response;
+      
+      // Handle command error with safe checks
+      if (!finalPayload || finalPayload.status === "error") {
         console.error("MiniKit command error:", finalPayload);
-        setErrorMsg(finalPayload.message || "Verification failed. Please try again.");
+        setErrorMsg(finalPayload?.message || "Verification failed. Please try again.");
         setIsLoading(false);
         return;
       }
 
+      // Safety check for required fields
       if (!finalPayload.proof || !finalPayload.nullifier_hash || !finalPayload.merkle_root) {
         console.error("MiniKit verification response missing required fields:", finalPayload);
         setErrorMsg("Verification response incomplete.");
@@ -172,7 +200,7 @@ export default function Verify() {
     } catch (error) {
       console.error("Error during MiniKit verification process:", error);
       // @ts-ignore
-      setErrorMsg(error.message || "Authentication error. Please try again later.");
+      setErrorMsg(error?.message || "Authentication error. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -200,11 +228,14 @@ export default function Verify() {
     return <div className="text-xs text-amber-300 p-2">World App features inactive.</div>;
   }
 
+  // Safe check for session data
+  const isAuthenticated = status === 'authenticated' && !!session;
+
   return (
     <div className="flex flex-col items-end">
       {errorMsg && <div className="text-red-500 text-xs mb-1">Error: {errorMsg}</div>}
       
-      {status === 'authenticated' ? (
+      {isAuthenticated ? (
         <div className="flex items-center space-x-2">
            <span className="text-sm text-white">Verified</span>
            <button 
