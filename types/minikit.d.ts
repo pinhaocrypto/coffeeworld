@@ -4,6 +4,7 @@ interface MiniKitGlobal {
   walletAddress?: string;
   commandsAsync?: {
     walletAuth: (params: any) => Promise<any>;
+    verify: (params: any) => Promise<any>;
   };
 }
 
