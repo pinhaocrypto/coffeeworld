@@ -24,8 +24,11 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
     
+    // 安全檢測環境
+    const isDev = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
+    
     // Log to console in development, could log to an error tracking service in production
-    if (process.env.NODE_ENV !== 'production') {
+    if (isDev) {
       console.log("React Error Boundary caught an error:", error.message);
       console.log("Component Stack:", errorInfo.componentStack);
     }

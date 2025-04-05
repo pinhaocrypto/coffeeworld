@@ -7,8 +7,8 @@ import { signIn, signOut, useSession } from 'next-auth/react';
 const APP_ID = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || 'app_6bd93d77f6ac5663b82b4a4894eb3417';
 const ACTION = "coffeeworld-review";
 
-// 在開發環境中自動模擬成功的驗證
-const IS_DEV = process.env.NODE_ENV !== 'production';
+// 在開發環境中自動模擬成功的驗證 - 安全檢測環境
+const IS_DEV = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 
 // Context to manage World ID verification state
 interface WorldIDContextType {

@@ -6,7 +6,6 @@ import '../styles/globals.css';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { WorldIDProvider } from '../components/WorldIDProvider';
 import WorldIDButton from '../components/WorldIDButton';
-import DevModeAuth from '../components/DevModeAuth';
 
 const SafeHydration = ({ children }: { children: React.ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -102,7 +101,8 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
                     <h1 className="text-2xl font-bold">Coffee World</h1>
                     <ErrorBoundary fallback={<button className="px-4 py-2 bg-amber-700 text-white rounded">Auth Error</button>}>
                       <div className="flex items-center space-x-2">
-                        <DevModeAuth />
+                        {/* 暫時移除 DevModeAuth 組件 */}
+                        {/* <DevModeAuth /> */}
                         <WorldIDButton />
                       </div>
                     </ErrorBoundary>

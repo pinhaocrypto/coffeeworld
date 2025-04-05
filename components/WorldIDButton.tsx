@@ -1,8 +1,10 @@
+"use client"
 import { useWorldID } from './WorldIDProvider';
 
 export default function WorldIDButton() {
   const { isVerified, isLoading, error, openWidget, handleSignOut, devModeLogin } = useWorldID();
-  const isDev = process.env.NODE_ENV !== 'production';
+  // 安全檢測環境變量
+  const isDev = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
 
   return (
     <div className="flex flex-col items-end">
@@ -35,7 +37,7 @@ export default function WorldIDButton() {
               onClick={devModeLogin}
               disabled={isLoading}
             >
-              {isLoading ? 'Logging in...' : '🛠️ Dev Login'}
+              {isLoading ? 'Logging in...' : 'Dev Login'}
             </button>
           )}
         </div>
