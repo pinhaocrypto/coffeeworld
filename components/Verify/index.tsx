@@ -1,7 +1,6 @@
 "use client";
-// Fix imports to match actual export names
+import { useState, useCallback, useEffect } from "react";
 import { VerificationLevel } from "@worldcoin/idkit";
-import { useState, useCallback } from "react";
 
 // Define types directly since the imports are causing issues
 interface ISuccessResult {
@@ -11,118 +10,144 @@ interface ISuccessResult {
   verification_level: string;
 }
 
-interface MiniAppVerifyActionErrorPayload {
-  status: string;
-  errorMessage?: string;
-}
-
-interface IVerifyResponse {
-  status: string;
-  [key: string]: any;
-}
-
-export type VerifyCommandInput = {
+interface VerifyCommandInput {
   action: string;
   signal?: string;
   verification_level?: string; // Default: Orb
-};
+}
 
-const verifyPayload: VerifyCommandInput = {
-  action: "test-action", // This is your action ID from the Developer Portal
-  signal: "",
-  verification_level: "orb", // Orb | Device
-};
+// Create a mock for testing when not in World App
+const createMockResult = () => ({
+  proof: "mock-proof-for-testing",
+  merkle_root: "mock-merkle-root",
+  nullifier_hash: `mock-nullifier-${Date.now()}`,
+  verification_level: "orb"
+});
 
 export const VerifyBlock = () => {
-  const [handleVerifyResponse, setHandleVerifyResponse] = useState<
-    MiniAppVerifyActionErrorPayload | IVerifyResponse | null
-  >(null);
+  const [response, setResponse] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Check if we're in the World App environment
+  const isInWorldApp = typeof window !== 'undefined' && 
+                      window.MiniKit !== undefined && 
+                      typeof window.MiniKit?.isInstalled === 'function' && 
+                      window.MiniKit.isInstalled();
 
   const handleVerify = useCallback(async () => {
     try {
-      // Access MiniKit through the window object
-      if (!window.MiniKit || !window.MiniKit.isInstalled()) {
-        console.warn("Tried to invoke 'verify', but MiniKit is not installed.");
-        setHandleVerifyResponse({
-          status: "error",
-          errorMessage: "MiniKit is not installed"
-        });
-        return null;
+      setLoading(true);
+      setError(null);
+      
+      // Safe check for all MiniKit properties
+      const miniKitAvailable = typeof window !== 'undefined' && window.MiniKit !== undefined;
+      const isInstalled = miniKitAvailable && typeof window.MiniKit?.isInstalled === 'function' && window.MiniKit.isInstalled();
+      const hasCommandsAsync = miniKitAvailable && window.MiniKit?.commandsAsync !== undefined;
+      const hasVerifyCommand = hasCommandsAsync && typeof window.MiniKit?.commandsAsync?.verify === 'function';
+      
+      console.log("MiniKit environment detection:", {
+        hasWindow: typeof window !== 'undefined',
+        hasMiniKit: miniKitAvailable,
+        hasIsInstalled: miniKitAvailable && typeof window.MiniKit?.isInstalled === 'function',
+        isInstalled,
+        hasCommandsAsync,
+        hasVerifyCommand
+      });
+      
+      let result: ISuccessResult;
+
+      if (isInstalled && hasVerifyCommand) {
+        // We're in the World App and can use MiniKit
+        console.log("Using real MiniKit verify...");
+        const verifyPayload = {
+          action: "coffee-world-verify",
+          signal: "",
+          verification_level: "orb"
+        };
+        
+        if (window.MiniKit?.commandsAsync?.verify) {
+          const { finalPayload } = await window.MiniKit.commandsAsync.verify(verifyPayload);
+          
+          if (finalPayload.status === "error") {
+            throw new Error(finalPayload.errorMessage || "Error from MiniKit verification");
+          }
+          
+          result = finalPayload;
+        } else {
+          throw new Error("MiniKit verify method not available despite checks");
+        }
+      } else {
+        // We're not in the World App - use a mock for testing
+        console.log("Using mock verification for testing...");
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+        result = createMockResult();
       }
-
-      // Check if commandsAsync exists
-      if (!window.MiniKit.commandsAsync) {
-        console.warn("MiniKit is installed but commandsAsync is not available");
-        setHandleVerifyResponse({
-          status: "error",
-          errorMessage: "MiniKit commandsAsync not available"
-        });
-        return null;
-      }
-
-      // Check if verify method exists
-      if (!window.MiniKit.commandsAsync.verify) {
-        console.warn("MiniKit is installed but verify method is not available");
-        setHandleVerifyResponse({
-          status: "error",
-          errorMessage: "MiniKit verify method not available"
-        });
-        return null;
-      }
-
-      const { finalPayload } = await window.MiniKit.commandsAsync.verify(verifyPayload);
-
-      // no need to verify if command errored
-      if (finalPayload.status === "error") {
-        console.log("Command error");
-        console.log(finalPayload);
-
-        setHandleVerifyResponse(finalPayload);
-        return finalPayload;
-      }
-
-      // Verify the proof in the backend
+      
+      // Now verify with our backend
+      console.log("Sending to backend for verification:", result);
       const verifyResponse = await fetch(`/api/worldcoin/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          payload: finalPayload as ISuccessResult, // Parses only the fields we need to verify
-          action: verifyPayload.action,
-          signal: verifyPayload.signal, // Optional
+          payload: result,
+          action: "coffee-world-verify"
         }),
       });
 
-      // TODO: Handle Success!
-      const verifyResponseJson = await verifyResponse.json();
-
-      if (verifyResponseJson.status === 200 || verifyResponseJson.success) {
-        console.log("Verification success!");
-        console.log(finalPayload);
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        throw new Error(errorData.error || "Failed to verify with backend");
       }
 
-      setHandleVerifyResponse(verifyResponseJson);
-      return verifyResponseJson;
-    } catch (error) {
-      console.error("Error in verify process:", error);
-      setHandleVerifyResponse({
-        status: "error",
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
-      return null;
+      const verifyResponseJson = await verifyResponse.json();
+      console.log("Verification success response:", verifyResponseJson);
+      setResponse(verifyResponseJson);
+      
+    } catch (err) {
+      console.error("Error in verify process:", err);
+      setError(err instanceof Error ? err.message : String(err));
+      setResponse(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   return (
-    <div>
-      <h1>Verify Block</h1>
-      <button className="bg-green-500 p-4" onClick={handleVerify}>
-        Test Verify
+    <div className="p-4 border rounded-lg shadow-sm">
+      <h2 className="text-xl font-semibold mb-4">World ID Verification</h2>
+      <div className="mb-4">
+        <p>
+          {isInWorldApp 
+            ? "Detected World App environment" 
+            : "Not running in World App - will use mock data"}
+        </p>
+      </div>
+      <button 
+        className={`px-4 py-2 rounded-md ${loading ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'} text-white font-medium`}
+        onClick={handleVerify}
+        disabled={loading}
+      >
+        {loading ? "Verifying..." : "Verify with World ID"}
       </button>
-      <pre className="mt-4 p-2 bg-gray-100 overflow-auto max-h-64">
-        {handleVerifyResponse ? JSON.stringify(handleVerifyResponse, null, 2) : "No response yet"}
-      </pre>
+      
+      {error && (
+        <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-800">
+          <p className="font-semibold">Error:</p>
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {response && (
+        <div className="mt-4">
+          <p className="font-semibold text-green-700">Verification successful!</p>
+          <pre className="mt-2 p-2 bg-gray-100 overflow-auto max-h-64 rounded-lg">
+            {JSON.stringify(response, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 };

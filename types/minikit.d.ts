@@ -2,6 +2,7 @@
 interface MiniKitGlobal {
   isInstalled: () => boolean;
   walletAddress?: string;
+  install: (appId?: string) => void;
   commandsAsync?: {
     walletAuth: (params: any) => Promise<any>;
     verify: (params: any) => Promise<any>;
