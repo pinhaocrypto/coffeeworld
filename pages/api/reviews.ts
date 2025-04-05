@@ -10,15 +10,17 @@ interface ExtendedUser {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getSession({ req });
-
-  // Check if user is authenticated
-  if (!session || !session.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
+  // Move authentication check to the specific methods that require it
+  // Rather than requiring it for all endpoints
 
   // Handle POST request for creating a review
   if (req.method === 'POST') {
+    // Check authentication for POST requests
+    const session = await getSession({ req });
+    if (!session || !session.user) {
+      return res.status(401).json({ error: 'Authentication required to post reviews' });
+    }
+
     try {
       const { coffeeShopId, rating, content } = req.body;
 
@@ -77,9 +79,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       // In a real application, you would query your database
-      // For demo, return an empty array or mock data
+      // For mock data, return a few sample reviews
+      const mockReviews = [
+        {
+          id: 'review-1',
+          userId: 'user-1',
+          userName: 'Coffee Lover',
+          coffeeShopId: coffeeShopId,
+          rating: 4.5,
+          content: 'Great atmosphere and amazing coffee! The baristas really know their craft.',
+          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+          upvotes: 5,
+          downvotes: 1,
+          userVote: null,
+        },
+        {
+          id: 'review-2',
+          userId: 'user-2',
+          userName: 'Morning Person',
+          coffeeShopId: coffeeShopId,
+          rating: 5,
+          content: 'Best cappuccino in town! I come here every morning before work.',
+          date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days ago
+          upvotes: 8,
+          downvotes: 0,
+          userVote: null,
+        }
+      ];
+      
       return res.status(200).json({
-        reviews: []
+        reviews: mockReviews
       });
     } catch (error) {
       console.error('Error fetching reviews:', error);
