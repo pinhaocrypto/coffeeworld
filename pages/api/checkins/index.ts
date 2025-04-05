@@ -25,46 +25,48 @@ function getTimestampMinutesAgo(minutesAgo: number): string {
 
 // Hardcoded check-ins for each coffee shop
 let checkIns: CheckIn[] = [
-  // Coffee Shop 1 (Brew Haven) - 7 people currently checked in
+  // Coffee Shop 1 (Brew Haven) - 2 people (LOW crowd level - Green)
   { id: '101', userWorldId: 'user1', shopId: '1', timestamp: getTimestampMinutesAgo(15) },
   { id: '102', userWorldId: 'user2', shopId: '1', timestamp: getTimestampMinutesAgo(25) },
-  { id: '103', userWorldId: 'user3', shopId: '1', timestamp: getTimestampMinutesAgo(30) },
-  { id: '104', userWorldId: 'user4', shopId: '1', timestamp: getTimestampMinutesAgo(35) },
-  { id: '105', userWorldId: 'user5', shopId: '1', timestamp: getTimestampMinutesAgo(40) },
-  { id: '106', userWorldId: 'user6', shopId: '1', timestamp: getTimestampMinutesAgo(45) },
-  { id: '107', userWorldId: 'user7', shopId: '1', timestamp: getTimestampMinutesAgo(50) },
   
-  // Coffee Shop 2 (The Roasted Bean) - 4 people currently checked in
+  // Coffee Shop 2 (The Roasted Bean) - 5 people (MODERATE crowd level - Yellow)
   { id: '201', userWorldId: 'user8', shopId: '2', timestamp: getTimestampMinutesAgo(10) },
   { id: '202', userWorldId: 'user9', shopId: '2', timestamp: getTimestampMinutesAgo(20) },
   { id: '203', userWorldId: 'user10', shopId: '2', timestamp: getTimestampMinutesAgo(30) },
   { id: '204', userWorldId: 'user11', shopId: '2', timestamp: getTimestampMinutesAgo(40) },
+  { id: '205', userWorldId: 'user12', shopId: '2', timestamp: getTimestampMinutesAgo(50) },
   
-  // Coffee Shop 3 (Morning Ritual) - 5 people currently checked in
-  { id: '301', userWorldId: 'user12', shopId: '3', timestamp: getTimestampMinutesAgo(5) },
-  { id: '302', userWorldId: 'user13', shopId: '3', timestamp: getTimestampMinutesAgo(15) },
-  { id: '303', userWorldId: 'user14', shopId: '3', timestamp: getTimestampMinutesAgo(25) },
-  { id: '304', userWorldId: 'user15', shopId: '3', timestamp: getTimestampMinutesAgo(35) },
-  { id: '305', userWorldId: 'user16', shopId: '3', timestamp: getTimestampMinutesAgo(45) },
+  // Coffee Shop 3 (Morning Ritual) - 8 people (HIGH crowd level - Orange)
+  { id: '301', userWorldId: 'user13', shopId: '3', timestamp: getTimestampMinutesAgo(5) },
+  { id: '302', userWorldId: 'user14', shopId: '3', timestamp: getTimestampMinutesAgo(15) },
+  { id: '303', userWorldId: 'user15', shopId: '3', timestamp: getTimestampMinutesAgo(25) },
+  { id: '304', userWorldId: 'user16', shopId: '3', timestamp: getTimestampMinutesAgo(35) },
+  { id: '305', userWorldId: 'user17', shopId: '3', timestamp: getTimestampMinutesAgo(45) },
+  { id: '306', userWorldId: 'user18', shopId: '3', timestamp: getTimestampMinutesAgo(50) },
+  { id: '307', userWorldId: 'user19', shopId: '3', timestamp: getTimestampMinutesAgo(55) },
+  { id: '308', userWorldId: 'user20', shopId: '3', timestamp: getTimestampMinutesAgo(60) },
   
-  // Coffee Shop 4 (Caffeine Culture) - 3 people currently checked in
-  { id: '401', userWorldId: 'user17', shopId: '4', timestamp: getTimestampMinutesAgo(10) },
-  { id: '402', userWorldId: 'user18', shopId: '4', timestamp: getTimestampMinutesAgo(20) },
-  { id: '403', userWorldId: 'user19', shopId: '4', timestamp: getTimestampMinutesAgo(30) },
+  // Coffee Shop 4 (Caffeine Culture) - 3 people (MODERATE crowd level - Yellow)
+  { id: '401', userWorldId: 'user21', shopId: '4', timestamp: getTimestampMinutesAgo(10) },
+  { id: '402', userWorldId: 'user22', shopId: '4', timestamp: getTimestampMinutesAgo(20) },
+  { id: '403', userWorldId: 'user23', shopId: '4', timestamp: getTimestampMinutesAgo(30) },
   
-  // Coffee Shop 5 (Artisan Pours) - 6 people currently checked in
-  { id: '501', userWorldId: 'user20', shopId: '5', timestamp: getTimestampMinutesAgo(5) },
-  { id: '502', userWorldId: 'user21', shopId: '5', timestamp: getTimestampMinutesAgo(15) },
-  { id: '503', userWorldId: 'user22', shopId: '5', timestamp: getTimestampMinutesAgo(25) },
-  { id: '504', userWorldId: 'user23', shopId: '5', timestamp: getTimestampMinutesAgo(35) },
-  { id: '505', userWorldId: 'user24', shopId: '5', timestamp: getTimestampMinutesAgo(45) },
-  { id: '506', userWorldId: 'user25', shopId: '5', timestamp: getTimestampMinutesAgo(55) },
+  // Coffee Shop 5 (Artisan Pours) - 12 people (VERY_HIGH crowd level - Red)
+  { id: '501', userWorldId: 'user24', shopId: '5', timestamp: getTimestampMinutesAgo(5) },
+  { id: '502', userWorldId: 'user25', shopId: '5', timestamp: getTimestampMinutesAgo(10) },
+  { id: '503', userWorldId: 'user26', shopId: '5', timestamp: getTimestampMinutesAgo(15) },
+  { id: '504', userWorldId: 'user27', shopId: '5', timestamp: getTimestampMinutesAgo(20) },
+  { id: '505', userWorldId: 'user28', shopId: '5', timestamp: getTimestampMinutesAgo(25) },
+  { id: '506', userWorldId: 'user29', shopId: '5', timestamp: getTimestampMinutesAgo(30) },
+  { id: '507', userWorldId: 'user30', shopId: '5', timestamp: getTimestampMinutesAgo(35) },
+  { id: '508', userWorldId: 'user31', shopId: '5', timestamp: getTimestampMinutesAgo(40) },
+  { id: '509', userWorldId: 'user32', shopId: '5', timestamp: getTimestampMinutesAgo(45) },
+  { id: '510', userWorldId: 'user33', shopId: '5', timestamp: getTimestampMinutesAgo(50) },
+  { id: '511', userWorldId: 'user34', shopId: '5', timestamp: getTimestampMinutesAgo(55) },
+  { id: '512', userWorldId: 'user35', shopId: '5', timestamp: getTimestampMinutesAgo(60) },
   
-  // Coffee Shop 6 (Third Wave Brews) - 4 people currently checked in
-  { id: '601', userWorldId: 'user26', shopId: '6', timestamp: getTimestampMinutesAgo(10) },
-  { id: '602', userWorldId: 'user27', shopId: '6', timestamp: getTimestampMinutesAgo(20) },
-  { id: '603', userWorldId: 'user28', shopId: '6', timestamp: getTimestampMinutesAgo(30) },
-  { id: '604', userWorldId: 'user29', shopId: '6', timestamp: getTimestampMinutesAgo(40) }
+  // Coffee Shop 6 (Third Wave Brews) - 0 people (Empty - Green)
+  // No check-ins to demonstrate an empty shop
 ];
 
 // Check-in validity duration in milliseconds (90 minutes)

@@ -114,9 +114,8 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
             <div className="flex flex-col gap-4">
               <CrowdStatus coffeeShopId={shop.id} />
               
-              {/* More prominent Check-in Button */}
+              {/* Check-in Button */}
               <div className="w-full p-4 bg-white rounded-md border border-amber-200 shadow-sm">
-                <h3 className="text-md font-semibold mb-3 text-amber-700">Currently at this location?</h3>
                 <CheckInButton coffeeShopId={shop.id} />
               </div>
             </div>

@@ -269,7 +269,7 @@ export default function Verify() {
         </div>
       ) : (
         <button 
-          className="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="px-3 py-1 text-sm font-medium text-white bg-amber-700 rounded hover:bg-amber-800 disabled:opacity-50 transition duration-200"
           onClick={isMiniKitAvailable ? handleVerify : handleFallbackVerify}
           disabled={isLoading || status === 'loading'}
         >
