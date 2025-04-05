@@ -9,7 +9,7 @@ declare module 'next-auth' {
   interface User {
     worldcoinVerified?: boolean;
   }
-  
+
   interface Session {
     user: {
       worldcoinVerified?: boolean;
@@ -42,7 +42,7 @@ const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials) return null;
-        
+
         try {
           // In development mode, bypass verification
           if (process.env.NODE_ENV !== 'production') {
@@ -53,7 +53,7 @@ const authOptions: NextAuthOptions = {
               worldcoinVerified: true,
             };
           }
-          
+
           // In production, verify the proof with Worldcoin
           const verified = await verifyWorldcoinProof({
             proof: credentials.proof,
@@ -61,7 +61,7 @@ const authOptions: NextAuthOptions = {
             merkle_root: credentials.merkle_root,
             verification_level: credentials.verification_level,
           });
-          
+
           if (verified.success) {
             // Return the user object
             return {
@@ -70,7 +70,7 @@ const authOptions: NextAuthOptions = {
               worldcoinVerified: true,
             };
           }
-          
+
           return null;
         } catch (error) {
           console.error('Error verifying Worldcoin proof:', error);
@@ -78,7 +78,7 @@ const authOptions: NextAuthOptions = {
         }
       },
     }),
-    
+
     // Development Provider (for testing without Worldcoin)
     CredentialsProvider({
       id: 'development',
@@ -88,7 +88,7 @@ const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials) return null;
-        
+
         // In development mode, always authenticate
         return {
           id: `dev-${Date.now()}`,
@@ -99,13 +99,13 @@ const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  
+
   // Configure session
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  
+
   // Configure callbacks
   callbacks: {
     async jwt({ token, user }) {
@@ -123,13 +123,13 @@ const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  
+
   // Configure pages
   pages: {
     signIn: '/',
     error: '/',
   },
-  
+
   // Debug mode
   debug: process.env.NODE_ENV === 'development',
 };
