@@ -10,12 +10,12 @@ When searching for a cozy coffee shop, it’s often hard to tell which reviews a
 
 - WorldID Verified Reviews:
 Every review is linked to a unique, verified user, ensuring authenticity and trustworthiness.
-	•	Real-Time Check-Ins:
+- Real-Time Check-Ins:
 Users can check in at their favorite coffee shops to update current occupancy. Color codes indicate crowd levels:
-	•	🟢 Relaxed (few people)
-	•	🟡 Moderate (some seating)
-	•	🔴 Crowded (likely to have a wait)
-	•	Incentives for Engagement:
+- 🟢 Relaxed (few people)
+- 🟡 Moderate (some seating)
+- 🔴 Crowded (likely to have a wait)
+- Incentives for Engagement:
 Businesses can reward reviews that receive significant community support, encouraging honest feedback and building a trusted community.
 
 ## How It Works
@@ -23,21 +23,21 @@ Businesses can reward reviews that receive significant community support, encour
 1. User Verification:
 Using Worldcoin’s MiniKit, users verify their identity with WorldID before they can post a review or check in. This prevents fake reviews and ensures every interaction is backed by a real, unique human.
 2. Review & Check-In System:
-	•	Reviews: Verified users post reviews about the coffee shop’s products, environment, and service.
-	•	Check-Ins: Users can check in to provide real-time data on the current crowd. This information is aggregated and color-coded for easy visualization.
-	3.	Backend Verification:
+- Reviews: Verified users post reviews about the coffee shop’s products, environment, and service.
+- Check-Ins: Users can check in to provide real-time data on the current crowd. This information is aggregated and color-coded for easy visualization.
+3. Backend Verification:
 The verification proof (including details like proof, merkle_root, and nullifier_hash) is sent to our backend for further validation, ensuring the integrity of every review.
 
 ## Technology Stack
 
 - Frontend:
-	•	Next.js with TypeScript for a modern, scalable web application.
-	•	Tailwind CSS for rapid and responsive UI development.
-	•	Backend:
-	•	Next.js API routes for handling secure server-side operations, such as verifying WorldID proofs and managing reviews.
-	•	Third-Party Integrations:
-	•	Worldcoin MiniKit for identity verification.
-	•	Google Maps API for displaying nearby coffee shops (with our own custom review and check-in data).
+  - Next.js with TypeScript for a modern, scalable web application.
+  - Tailwind CSS for rapid and responsive UI development.
+- Backend:
+  - Next.js API routes for handling secure server-side operations, such as verifying WorldID proofs and managing reviews.
+- Third-Party Integrations:
+  - Worldcoin MiniKit for identity verification.
+  - Google Maps API for displaying nearby coffee shops (with our own custom review and check-in data).
 
 ## Setup & Installation
 

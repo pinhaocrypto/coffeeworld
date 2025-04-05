@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef, useCallback, useMemo } from 'react';
 import { ISuccessResult, IDKitWidget, VerificationLevel } from '@worldcoin/idkit';
 import { signIn, signOut, useSession } from 'next-auth/react';
 
@@ -22,7 +22,7 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [widgetOpen, setWidgetOpen] = useState(false);
+  const openWidgetRef = useRef<(() => void) | null>(null);
 
   // Check if user is verified based on session
   const isVerified = !!session?.user?.worldcoinVerified;
@@ -73,7 +73,6 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
       setError(error instanceof Error ? error.message : 'Verification failed');
     } finally {
       setIsLoading(false);
-      setWidgetOpen(false);
     }
   };
   
@@ -90,41 +89,50 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   };
-  
-  // Open the IDKit widget
-  const openWidget = () => {
-    setWidgetOpen(true);
-  };
+
+  // Function to open the World ID widget
+  const openWidget = useCallback(() => {
+    if (openWidgetRef.current) {
+      openWidgetRef.current();
+    } else {
+      console.error('World ID widget not ready');
+      setError('World ID verification not available');
+    }
+  }, []);
+
+  // Context value
+  const contextValue = useMemo(() => ({
+    isVerified,
+    isLoading,
+    error,
+    openWidget,
+    handleVerificationSuccess,
+    handleSignOut,
+  }), [isVerified, isLoading, error, openWidget, handleVerificationSuccess, handleSignOut]);
 
   return (
-    <WorldIDContext.Provider
-      value={{
-        isVerified,
-        isLoading,
-        error,
-        openWidget,
-        handleVerificationSuccess,
-        handleSignOut,
-      }}
-    >
-      {children}
+    <>
+      <WorldIDContext.Provider value={contextValue}>
+        {children}
+      </WorldIDContext.Provider>
       
-      {/* Only render the widget when needed */}
-      {widgetOpen && (
-        <IDKitWidget
-          app_id={`app_${APP_ID}`}
-          action="verify"
-          onSuccess={handleVerificationSuccess}
-          handleVerify={(proof) => {
-            // This function is required by IDKit but we'll verify the proof on the server
-            return Promise.resolve();
-          }}
-          verification_level={VerificationLevel.Device}
-        >
-          {({ open }) => <div></div>}
-        </IDKitWidget>
-      )}
-    </WorldIDContext.Provider>
+      <IDKitWidget
+        app_id={`app_${APP_ID}`}
+        action="verify"
+        onSuccess={handleVerificationSuccess}
+        handleVerify={(proof) => {
+          console.log('Proof received for verification:', proof);
+          return Promise.resolve();
+        }}
+        verification_level={VerificationLevel.Device}
+      >
+        {({ open }) => {
+          // Store the open function in ref for later use
+          openWidgetRef.current = open;
+          return <div style={{ display: 'none' }} />; 
+        }}
+      </IDKitWidget>
+    </>
   );
 }
 
