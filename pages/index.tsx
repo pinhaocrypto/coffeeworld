@@ -162,6 +162,12 @@ export default function Home() {
       
       const data = await response.json();
       
+      // Add defensive check to ensure data.coffeeShops exists
+      if (!data || !data.coffeeShops || !Array.isArray(data.coffeeShops)) {
+        console.error('Invalid response format:', data);
+        throw new Error('Invalid response format from API');
+      }
+      
       // Add distance calculation to each coffee shop
       const shopsWithDistance = data.coffeeShops.map((shop: CoffeeShop) => {
         if (shop.latitude && shop.longitude) {

@@ -103,7 +103,18 @@ const filterByRadius = (
   longitude: number, 
   radius: number
 ): CoffeeShop[] => {
+  // Defensive check for undefined or null coffeeShops
+  if (!coffeeShops || !Array.isArray(coffeeShops)) {
+    console.warn('Invalid coffee shops array passed to filterByRadius');
+    return [];
+  }
+  
   return coffeeShops.filter(shop => {
+    // Ensure the shop has valid latitude and longitude
+    if (!shop || typeof shop.latitude !== 'number' || typeof shop.longitude !== 'number') {
+      return false;
+    }
+    
     const distance = calculateDistance(
       latitude, 
       longitude, 
@@ -152,16 +163,38 @@ const checkCacheItem = (
   longitude: number, 
   radius: number
 ): CoffeeShop[] | null => {
-  const cachedItem = localStorage.getItem(cacheKey);
-  if (!cachedItem) return null;
-  
+  // Perform safe checks to prevent undefined access
+  if (!cacheKey || typeof localStorage === 'undefined') {
+    return null;
+  }
+
   try {
+    const cachedItem = localStorage.getItem(cacheKey);
+    if (!cachedItem) return null;
+    
     const cacheItem: CacheItem<CoffeeShop[]> = JSON.parse(cachedItem);
+    
+    // Ensure cacheItem and cacheItem.data exist and are properly formed
+    if (!cacheItem || !cacheItem.data || !Array.isArray(cacheItem.data)) {
+      console.warn('Invalid cache structure, removing:', cacheKey);
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
+    
     const now = Date.now();
     
     // Check if cache is expired (older than 30 minutes)
     if (now - cacheItem.timestamp > CACHE_EXPIRY) {
       console.log('Cache expired, removing:', cacheKey);
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
+    
+    // Verify cacheItem.params exists before accessing properties
+    if (!cacheItem.params || 
+        typeof cacheItem.params.latitude !== 'number' || 
+        typeof cacheItem.params.longitude !== 'number') {
+      console.warn('Cache params invalid, removing:', cacheKey);
       localStorage.removeItem(cacheKey);
       return null;
     }
@@ -180,7 +213,11 @@ const checkCacheItem = (
     return cacheItem.data;
   } catch (error) {
     console.error('Error parsing cached data:', error);
-    localStorage.removeItem(cacheKey);
+    try {
+      localStorage.removeItem(cacheKey);
+    } catch (e) {
+      console.error('Error removing invalid cache:', e);
+    }
     return null;
   }
 };
