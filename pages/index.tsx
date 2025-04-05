@@ -35,15 +35,32 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [selectedRadius, setSelectedRadius] = useState<number>(3000); // Default to 3km
   const [showLocationPrompt, setShowLocationPrompt] = useState<boolean>(false);
+  const [permissionChecked, setPermissionChecked] = useState<boolean>(false);
 
-  // Get user location and fetch coffee shops
+  // Check if user has previously granted location permission
   useEffect(() => {
-    if (session) {
-      // Show location prompt instead of automatically requesting
-      setShowLocationPrompt(true);
-      setLoading(false);
-      setLocationStatus('permission_needed');
-    } else {
+    if (typeof window !== 'undefined' && session) {
+      // Check localStorage for previous permission
+      const storedPermission = localStorage.getItem('locationPermissionGranted');
+      
+      if (storedPermission === 'true') {
+        // User previously granted permission, get location automatically
+        setShowLocationPrompt(false);
+        getUserLocation();
+      } else if (storedPermission === 'false') {
+        // User previously denied permission
+        setLocationStatus('denied');
+        setError('Location access was denied. Allow location access to find coffee shops near you.');
+        setLoading(false);
+      } else {
+        // No stored preference, show the prompt
+        setShowLocationPrompt(true);
+        setLocationStatus('permission_needed');
+        setLoading(false);
+      }
+      
+      setPermissionChecked(true);
+    } else if (!session) {
       setCoffeeShops([]);
       setLoading(false);
     }
@@ -73,6 +90,12 @@ export default function Home() {
         const { latitude, longitude } = position.coords;
         setUserLocation({ latitude, longitude });
         setLocationStatus('success');
+        
+        // Store permission in localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('locationPermissionGranted', 'true');
+        }
+        
         fetchCoffeeShops(latitude, longitude, selectedRadius);
       },
       // Error callback
@@ -81,6 +104,11 @@ export default function Home() {
         if (error.code === error.PERMISSION_DENIED) {
           setLocationStatus('denied');
           setError('Location access was denied. Allow location access to find coffee shops near you.');
+          
+          // Store denied permission in localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('locationPermissionGranted', 'false');
+          }
         } else {
           setLocationStatus('error');
           setError('Unable to retrieve your location. Please try again later.');

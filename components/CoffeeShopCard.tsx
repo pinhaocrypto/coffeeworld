@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistance } from '@/utils/googleMaps';
 import CrowdStatus from './CrowdStatus';
+import { useState } from 'react';
 
 interface CoffeeShop {
   id: string;
@@ -20,6 +21,9 @@ interface CoffeeShopCardProps {
 }
 
 export default function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const fallbackImage = '/coffee-fallback.jpg';
+  
   // Function to render stars based on rating
   const renderStars = (rating: number) => {
     const stars = [];
@@ -67,7 +71,7 @@ export default function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
   const detailUrl = `/coffee-shop/${shop.id}?` + 
     `name=${encodeURIComponent(shop.name)}&` +
     `address=${encodeURIComponent(shop.address)}&` +
-    `image=${encodeURIComponent(shop.image)}&` +
+    `image=${encodeURIComponent(imageError ? fallbackImage : shop.image)}&` +
     `rating=${shop.rating}`;
 
   return (
@@ -75,10 +79,13 @@ export default function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
       <div className="card hover:shadow-lg transition-shadow duration-300">
         <div className="relative h-48 w-full">
           <Image 
-            src={shop.image}
+            src={imageError ? fallbackImage : shop.image}
             alt={shop.name}
             fill
             className="object-cover"
+            onError={() => setImageError(true)}
+            unoptimized={shop.image.includes('unsplash.com')}
+            priority={true}
           />
         </div>
         <div className="p-4">
