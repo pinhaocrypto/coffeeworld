@@ -27,23 +27,37 @@ export async function verifyWorldcoinProof(payload: WorldcoinProofPayload): Prom
       // When running on the server, do direct verification instead of API call
       console.log("Performing direct Worldcoin verification on server side");
       
-      // For development/demo purposes, we'll simulate successful verification
-      // In production, you would use Worldcoin's SDK or API directly here
-      if (process.env.NODE_ENV === 'development') {
+      // For development/demo purposes, we'll always return success
+      // This lets you test the app without actual World ID verification
+      console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+      
+      // In development mode, always simulate successful verification
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Development mode - simulating successful verification');
         return {
           success: true,
-          nullifier_hash: payload.nullifier_hash
+          nullifier_hash: payload.nullifier_hash || 'mock-nullifier-hash'
         };
       }
       
       // For production, call the actual Worldcoin API
       try {
-        const worldcoinAppId = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID?.startsWith('app_')
-          ? process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID
-          : `app_${process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID}`;
+        // Get app ID and ensure correct format
+        const worldcoinAppId = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || '';
+        const formattedAppId = worldcoinAppId.startsWith('app_') 
+          ? worldcoinAppId.substring(4) // Remove 'app_' prefix if present
+          : worldcoinAppId;
+        
+        console.log(`Calling Worldcoin API with app ID: ${formattedAppId}`);
+        console.log('Verification payload:', {
+          merkle_root: payload.merkle_root,
+          nullifier_hash: payload.nullifier_hash,
+          proof: payload.proof,
+          verification_level: payload.verification_level || "device"
+        });
         
         const verifyRes = await fetch(
-          `https://developer.worldcoin.org/api/v1/verify/${worldcoinAppId}`,
+          `https://developer.worldcoin.org/api/v1/verify/app_${formattedAppId}`,
           {
             method: 'POST',
             headers: {

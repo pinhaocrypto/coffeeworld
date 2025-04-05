@@ -44,7 +44,17 @@ const authOptions: NextAuthOptions = {
         if (!credentials) return null;
         
         try {
-          // Verify the proof with Worldcoin
+          // In development mode, bypass verification
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('Development mode: bypassing World ID verification');
+            return {
+              id: credentials.nullifier_hash || `dev-user-${Date.now()}`,
+              name: 'World ID User (Dev)',
+              worldcoinVerified: true,
+            };
+          }
+          
+          // In production, verify the proof with Worldcoin
           const verified = await verifyWorldcoinProof({
             proof: credentials.proof,
             nullifier_hash: credentials.nullifier_hash,
