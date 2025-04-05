@@ -111,9 +111,14 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
           {/* Crowd Status and Check-In Section */}
           <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-100">
             <h2 className="text-lg font-semibold mb-3 text-amber-800">Live Crowd Monitor</h2>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col gap-4">
               <CrowdStatus coffeeShopId={shop.id} />
-              <CheckInButton coffeeShopId={shop.id} />
+              
+              {/* More prominent Check-in Button */}
+              <div className="w-full p-4 bg-white rounded-md border border-amber-200 shadow-sm">
+                <h3 className="text-md font-semibold mb-3 text-amber-700">Currently at this location?</h3>
+                <CheckInButton coffeeShopId={shop.id} />
+              </div>
             </div>
           </div>
 
@@ -124,13 +129,10 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
             </div>
           )}
 
-          {/* Google Maps link - Updated to work with either placeId or coordinates */}
+          {/* Google Maps link - Updated to search by name */}
           <div className="mt-4">
             <a 
-              href={shop.placeId 
-                ? `https://www.google.com/maps/place/?q=place_id:${shop.placeId}` 
-                : `https://www.google.com/maps/search/?api=1&query=${shop.latitude},${shop.longitude}`
-              }
+              href={`https://www.google.com/maps/search/${encodeURIComponent(shop.name)}/`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-800 flex items-center"
@@ -149,25 +151,27 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
       <div className="mt-10">
         <h2 className="text-2xl font-bold mb-6">Reviews</h2>
         
-        {/* Worldcoin Auth Message - Updated to use Verify instead of AuthButton */}
-        {!session ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
-            <h3 className="text-xl font-semibold mb-2">Verify with World ID to leave reviews</h3>
-            <p className="text-gray-600 mb-4">
-              Use the World App to verify and leave your review. Your identity remains private while proving you're human.
-            </p>
-            <div className="flex justify-center mt-4">
-              <Verify />
+        {/* Review Form - Only for verified users */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">Write a Review</h3>
+          
+          {!session ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <p className="text-gray-600 mb-4">
+                Verify with World ID to leave reviews and vote on other reviews. Your identity remains private while proving you're human.
+              </p>
+              <div className="flex justify-center">
+                <Verify />
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-4">Write a Review</h3>
-            <ReviewForm coffeeShopId={shop.id} onReviewAdded={handleReviewAdded} />
-          </div>
-        )}
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+              <ReviewForm coffeeShopId={shop.id} onReviewAdded={handleReviewAdded} />
+            </div>
+          )}
+        </div>
         
-        {/* Reviews list */}
+        {/* Reviews list - Visible to all users */}
         <div className="space-y-6">
           {isLoading ? (
             <div className="flex justify-center py-8">
