@@ -108,10 +108,15 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
                 <div className="container mx-auto p-4 flex justify-between items-center">
                   <h1 className="text-2xl font-bold">Coffee World</h1>
                   <ErrorBoundary fallback={<button className="px-4 py-2 bg-amber-700 text-white rounded">Sign In</button>}>
-                    {/* Use both authentication buttons - MiniKit button only shows in World App */}
+                    {/* Rendering buttons conditionally - Only one auth method should appear */}
                     <div className="flex space-x-2">
+                      {/* WorldMiniKitButton handles its own visibility */}
                       <WorldMiniKitButton />
-                      <WorldIdAuthButton />
+                      
+                      {/* WorldIdAuthButton only shows when not in World App environment */}
+                      <div className="world-id-auth-container">
+                        <WorldIdAuthButton />
+                      </div>
                     </div>
                   </ErrorBoundary>
                 </div>

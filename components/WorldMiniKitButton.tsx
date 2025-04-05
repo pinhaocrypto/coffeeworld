@@ -45,10 +45,22 @@ export default function WorldMiniKitButton() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        // @ts-ignore - Access MiniKit from window for World App environment
-        const isMiniKitInstalled = !!(window.MiniKit && typeof window.MiniKit.isInstalled === 'function' && window.MiniKit.isInstalled());
-        console.log('MiniKit available:', isMiniKitInstalled);
-        setIsMiniKitAvailable(isMiniKitInstalled);
+        // A more robust check for World App environment
+        const inWorldApp = (
+          window.location.hostname.includes('worldcoin.org') || 
+          window.navigator.userAgent.includes('WorldApp') ||
+          // @ts-ignore - Only check parent if we're in an iframe
+          (window !== window.top && window.parent && window.parent !== window) ||
+          // @ts-ignore - Check for MiniKit API
+          (window.MiniKit && typeof window.MiniKit.isInstalled === 'function' && window.MiniKit.isInstalled())
+        );
+        
+        // For debugging
+        console.log('World App environment detected:', inWorldApp);
+        console.log('User agent:', window.navigator.userAgent);
+        
+        // Only set to true if we're really in World App
+        setIsMiniKitAvailable(!!inWorldApp);
       } catch (error) {
         console.error('Error checking MiniKit availability:', error);
         setIsMiniKitAvailable(false);
@@ -90,25 +102,29 @@ export default function WorldMiniKitButton() {
       console.log("Verification successful:", verifyResponse);
       
       // Verify the proof in the backend
-      const verifyResponseJson = await fetch(`/api/worldcoin/verify`, {
+      const verifyResponseJson = await fetch(`/api/verify-worldcoin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          payload: verifyResponse.finalPayload,
-          action: verifyPayload.action,
-          signal: verifyPayload.signal,
+          // Direct format expected by the API endpoint
+          merkle_root: verifyResponse.finalPayload.merkle_root,
+          nullifier_hash: verifyResponse.finalPayload.nullifier_hash,
+          proof: verifyResponse.finalPayload.proof,
+          verification_level: verifyResponse.finalPayload.verification_level
         }),
       });
 
-      const verifyResponseJsonData = await verifyResponseJson.json();
+      const verifyData = await verifyResponseJson.json();
+      
+      console.log("Backend verification response:", verifyData);
 
-      if (verifyResponseJsonData.success) {
+      if (verifyData.success) {
         console.log("Backend verification success!");
         
         // Sign in with NextAuth
-        await signIn('worldcoin', { 
+        const signInResult = await signIn('worldcoin', { 
           proof: verifyResponse.finalPayload.proof,
           nullifier_hash: verifyResponse.finalPayload.nullifier_hash,
           merkle_root: verifyResponse.finalPayload.merkle_root,
@@ -116,14 +132,16 @@ export default function WorldMiniKitButton() {
           redirect: false,
         });
         
+        console.log("Sign in result:", signInResult);
+        
         // Reload to update session
         window.location.reload();
       } else {
-        console.error("Backend verification failed:", verifyResponseJsonData);
+        console.error("Backend verification failed:", verifyData);
         setErrorMsg("Authentication failed. Please try again.");
       }
 
-      return verifyResponseJsonData;
+      return verifyData;
     } catch (error) {
       console.error("Error during verification:", error);
       setErrorMsg("Authentication error. Please try again later.");
