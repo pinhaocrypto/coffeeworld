@@ -3,7 +3,7 @@ import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import '../styles/globals.css';
-import WorldMiniKitButton from '../components/WorldMiniKitButton';
+import Verify from '../components/Verify';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 const SafeHydration = ({ children }: { children: React.ReactNode }) => {
@@ -98,7 +98,7 @@ export default function MyApp({ Component, pageProps: { session, ...pageProps } 
                 <div className="container mx-auto p-4 flex justify-between items-center">
                   <h1 className="text-2xl font-bold">Coffee World</h1>
                   <ErrorBoundary fallback={<button className="px-4 py-2 bg-amber-700 text-white rounded">Auth Error</button>}>
-                    <WorldMiniKitButton />
+                    <Verify />
                   </ErrorBoundary>
                 </div>
               </header>
