@@ -1,9 +1,11 @@
+"use client"
 import React, { createContext, useContext, useState, ReactNode, useRef, useCallback, useMemo } from 'react';
 import { ISuccessResult, IDKitWidget, VerificationLevel } from '@worldcoin/idkit';
 import { signIn, signOut, useSession } from 'next-auth/react';
 
 // Action ID for the application
-const APP_ID = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || 'wld_staging_1234567890';
+const APP_ID = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || 'app_6bd93d77f6ac5663b82b4a4894eb3417';
+const ACTION = "coffeeworld-review";
 
 // 在開發環境中自動模擬成功的驗證
 const IS_DEV = process.env.NODE_ENV !== 'production';
@@ -35,21 +37,21 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
   // 開發模式直接登入
   const devModeLogin = async () => {
     if (!IS_DEV) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       console.log("Using dev mode login bypass");
       const result = await signIn('development', {
         redirect: false,
         username: 'DevUser'
       });
-      
+
       if (result?.error) {
         throw new Error(`Dev login failed: ${result.error}`);
       }
-      
+
       // Refresh to update session
       window.location.reload();
     } catch (error) {
@@ -60,53 +62,67 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // 服務器端驗證 World ID 證明
+  const verifyProof = async (proof: ISuccessResult) => {
+    console.log('Verifying proof with World ID API:', proof);
+    try {
+      const response = await fetch('/api/verify-worldcoin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...proof, action: ACTION }),
+      });
+
+      if (!response.ok) {
+        const { code, detail } = await response.json();
+        throw new Error(`Error Code ${code}: ${detail}`);
+      }
+
+      const { verified } = await response.json();
+      return verified;
+    } catch (error) {
+      console.error('Error verifying proof:', error);
+      throw error;
+    }
+  };
+
   // Handle World ID verification success
   const handleVerificationSuccess = async (result: ISuccessResult) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       console.log('World ID verification successful:', result);
-      
+
       // 在開發模式直接使用 development provider
       if (IS_DEV) {
         console.log('Development mode: using dev provider instead of verifying proof');
         await devModeLogin();
         return;
       }
+
+      // 驗證 proof
+      const verified = await verifyProof(result);
       
-      // Send proof to backend for verification
-      const verifyResponse = await fetch('/api/verify-worldcoin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          merkle_root: result.merkle_root,
-          nullifier_hash: result.nullifier_hash,
-          proof: result.proof,
-          verification_level: result.verification_level
-        }),
-      });
-      
-      const verifyData = await verifyResponse.json();
-      
-      if (!verifyResponse.ok || !verifyData.success) {
-        throw new Error(verifyData.error || 'Backend verification failed');
+      if (!verified) {
+        throw new Error('Proof verification failed');
       }
       
-      // Sign in with NextAuth using verified credentials
+      // 使用 NextAuth 進行身份驗證
       const signInResult = await signIn('worldcoin', {
-        proof: result.proof,
+        proof: JSON.stringify(result.proof),
         nullifier_hash: result.nullifier_hash,
         merkle_root: result.merkle_root,
         verification_level: result.verification_level,
         redirect: false,
       });
-      
+
       if (signInResult?.error) {
         throw new Error(`Sign-in failed: ${signInResult.error}`);
       }
-      
-      // Refresh page to update session state
+
+      // 刷新頁面以更新會話
       window.location.reload();
     } catch (error) {
       console.error('Verification error:', error);
@@ -115,7 +131,7 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   };
-  
+
   // Handle sign out
   const handleSignOut = async () => {
     setIsLoading(true);
@@ -137,7 +153,7 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
       devModeLogin();
       return;
     }
-    
+
     if (openWidgetRef.current) {
       openWidgetRef.current();
     } else {
@@ -162,28 +178,21 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
       <WorldIDContext.Provider value={contextValue}>
         {children}
       </WorldIDContext.Provider>
-      
-      {/* 只在生產環境中使用真實的 IDKitWidget */}
-      {!IS_DEV && (
-        <IDKitWidget
-          app_id={`app_${APP_ID.replace(/^app_/, '')}`}
-          action="verify"
-          signal=""
-          onSuccess={handleVerificationSuccess}
-          handleVerify={(proof) => {
-            console.log('Received World ID proof for verification:', proof);
-            return Promise.resolve();
-          }}
-          verification_level={VerificationLevel.Device}
-          // 確保使用正確的環境配置
-          autoClose
-        >
-          {({ open }) => {
-            openWidgetRef.current = open;
-            return <div style={{ display: 'none' }} />; 
-          }}
-        </IDKitWidget>
-      )}
+
+      <IDKitWidget
+        app_id={APP_ID.startsWith('app_') ? APP_ID as `app_${string}` : `app_${APP_ID}` as `app_${string}`}
+        action={ACTION}
+        signal=""
+        onSuccess={handleVerificationSuccess}
+        handleVerify={verifyProof}
+        verification_level={VerificationLevel.Device}
+        autoClose
+      >
+        {({ open }) => {
+          openWidgetRef.current = open;
+          return <div style={{ display: 'none' }} />;
+        }}
+      </IDKitWidget>
     </>
   );
 }
