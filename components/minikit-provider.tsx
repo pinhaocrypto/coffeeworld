@@ -27,54 +27,39 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
   const [credential, setCredential] = useState<ISuccessResult | null>(null);
   const [isMiniKitInstalled, setIsMiniKitInstalled] = useState<boolean>(false);
   
-  // Add a script tag for MiniKit instead of trying to import it
+  // Simplified approach - don't try to load MiniKit dynamically
+  // Instead, let's just check if it's available and log diagnostics
   useEffect(() => {
     try {
-      // Check if we need to add a script tag
-      if (typeof window !== 'undefined' && !window.MiniKit) {
-        console.log("Adding MiniKit script...");
+      if (typeof window !== 'undefined') {
+        // Log the current state of MiniKit for debugging
+        console.log("MiniKit environment check:", {
+          windowExists: typeof window !== 'undefined',
+          miniKitExists: typeof window.MiniKit !== 'undefined',
+          isInstalled: window.MiniKit && typeof window.MiniKit.isInstalled === 'function' 
+                      ? window.MiniKit.isInstalled() 
+                      : false,
+          commandsAsync: window.MiniKit && window.MiniKit.commandsAsync 
+                        ? Object.keys(window.MiniKit.commandsAsync) 
+                        : 'undefined'
+        });
         
-        // Create a script tag to load MiniKit
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@worldcoin/minikit-js@latest/+esm';
-        script.type = 'module';
-        script.async = true;
-        
-        script.onload = () => {
-          console.log("MiniKit script loaded");
-          
-          // Initialize MiniKit if it's available
-          if (window.MiniKit && typeof window.MiniKit.install === 'function') {
-            const appId = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID;
-            console.log("Installing MiniKit with app ID:", appId);
-            window.MiniKit.install(appId);
-            
-            // Check installation after a short delay
-            setTimeout(() => {
-              const isInstalled = window.MiniKit && 
-                                 typeof window.MiniKit.isInstalled === 'function' && 
-                                 window.MiniKit.isInstalled();
-              console.log("MiniKit installed:", isInstalled);
-              setIsMiniKitInstalled(!!isInstalled);
-            }, 1000);
-          }
-        };
-        
-        script.onerror = (err) => {
-          console.error("Error loading MiniKit script:", err);
-        };
-        
-        document.head.appendChild(script);
-      } else if (window.MiniKit) {
-        // MiniKit is already available
-        console.log("MiniKit already available in window");
-        const isInstalled = typeof window.MiniKit.isInstalled === 'function' && 
+        // Check if MiniKit is installed
+        const isInstalled = window.MiniKit && 
+                           typeof window.MiniKit.isInstalled === 'function' && 
                            window.MiniKit.isInstalled();
-        setIsMiniKitInstalled(isInstalled);
+                           
+        console.log("MiniKit installed check:", isInstalled);
+        setIsMiniKitInstalled(!!isInstalled);
       }
     } catch (error) {
-      console.error("Error initializing MiniKit:", error);
+      console.error("Error checking MiniKit:", error);
     }
+    
+    // Return cleanup function
+    return () => {
+      // Nothing to clean up
+    };
   }, []);
   
   // Handle successful verification
