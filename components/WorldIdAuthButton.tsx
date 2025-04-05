@@ -44,7 +44,8 @@ export default function WorldIdAuthButton() {
       // --- Step 1: Backend Verification --- 
       console.log("Sending proof to backend for verification...");
       // IMPORTANT: Verify this is the correct endpoint and expected payload structure
-      const response = await fetch('/api/worldcoin/verify', { 
+      // Correct the API endpoint path
+      const response = await fetch('/api/verify-worldcoin', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
