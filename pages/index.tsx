@@ -23,7 +23,71 @@ const distanceOptions = [
   { label: '1km', value: 1000 },
   { label: '3km', value: 3000 },
   { label: '5km', value: 5000 },
-  { label: '10km', value: 10000 },
+  { label: 'Example', value: -1 }, // Special value to indicate example data
+];
+
+// Example coffee shop data
+const exampleCoffeeShops: CoffeeShop[] = [
+  {
+    id: '1',
+    name: 'Brew Haven',
+    address: '123 Coffee Lane, San Francisco',
+    image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&q=80',
+    rating: 4.8,
+    reviewCount: 120,
+    latitude: 37.7749,
+    longitude: -122.4194,
+  },
+  {
+    id: '2',
+    name: 'The Roasted Bean',
+    address: '456 Barista Avenue, San Francisco',
+    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&q=80',
+    rating: 4.2,
+    reviewCount: 85,
+    latitude: 37.7859,
+    longitude: -122.4364,
+  },
+  {
+    id: '3',
+    name: 'Morning Ritual',
+    address: '789 Espresso Street, San Francisco',
+    image: 'https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?w=800&q=80',
+    rating: 4.5,
+    reviewCount: 96,
+    latitude: 37.7963,
+    longitude: -122.4574,
+  },
+  {
+    id: '4',
+    name: 'Caffeine Culture',
+    address: '321 Latte Drive, San Francisco',
+    image: 'https://images.unsplash.com/photo-1501747315-124a0eaca060?w=800&q=80',
+    rating: 4.3,
+    reviewCount: 78,
+    latitude: 37.8083,
+    longitude: -122.4156,
+  },
+  {
+    id: '5',
+    name: 'Artisan Pours',
+    address: '555 Macchiato Street, San Francisco',
+    image: 'https://images.unsplash.com/photo-1515215316771-2742baa337f4?w=800&q=80',
+    rating: 4.7,
+    reviewCount: 135,
+    latitude: 37.7719,
+    longitude: -122.4024,
+  },
+  {
+    id: '6',
+    name: 'Third Wave Brews',
+    address: '999 Pour-Over Place, San Francisco',
+    image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=800&q=80',
+    rating: 4.6,
+    reviewCount: 112,
+    latitude: 37.7867,
+    longitude: -122.3872,
+  }
 ];
 
 export default function Home() {
@@ -193,7 +257,12 @@ export default function Home() {
 
   // Effect to refetch coffee shops when the radius changes
   useEffect(() => {
-    if (userLocation) {
+    if (selectedRadius === -1) {
+      // Special case for example data, no location needed
+      setCoffeeShops(exampleCoffeeShops);
+      setLocationStatus('success'); // Set to success to display the grid
+      setLoading(false);
+    } else if (userLocation) {
       fetchCoffeeShops(userLocation.latitude, userLocation.longitude, selectedRadius);
     }
   }, [selectedRadius, userLocation]); // Re-run when radius or location changes
@@ -224,26 +293,24 @@ export default function Home() {
         {loading && <p className="text-center text-amber-600">Loading...</p>}
         {error && <p className="text-center text-red-600">Error: {error}</p>}
 
-        {!loading && locationStatus === 'success' && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2 text-amber-800">Search Radius</h3>
-            <div className="flex flex-wrap gap-2">
-              {distanceOptions.map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedRadius(option.value)}
-                  className={`px-4 py-2 rounded-full border transition-all ${
-                    selectedRadius === option.value
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400 hover:bg-amber-50'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2 text-amber-800">Search Options</h3>
+          <div className="flex flex-wrap gap-2">
+            {distanceOptions.map(option => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedRadius(option.value)}
+                className={`px-4 py-2 rounded-full border transition-all ${
+                  selectedRadius === option.value
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400 hover:bg-amber-50'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
         
         {!loading && locationStatus === 'success' && coffeeShops.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
