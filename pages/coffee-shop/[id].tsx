@@ -8,6 +8,8 @@ import ReviewForm from '@/components/ReviewForm';
 import ReviewItem from '@/components/ReviewItem';
 import { Review } from '@/types/review';
 import AuthButton from '@/components/AuthButton';
+import CheckInButton from '@/components/CheckInButton';
+import CrowdStatus from '@/components/CrowdStatus';
 
 interface CoffeeShop {
   id: string;
@@ -104,6 +106,15 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
             </div>
           </div>
 
+          {/* Crowd Status and Check-In Section */}
+          <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-100">
+            <h2 className="text-lg font-semibold mb-3 text-amber-800">Live Crowd Monitor</h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <CrowdStatus coffeeShopId={shop.id} />
+              <CheckInButton coffeeShopId={shop.id} />
+            </div>
+          </div>
+
           {shop.description && (
             <div className="mt-4 text-gray-700">
               <h2 className="text-xl font-semibold mb-2">About</h2>
@@ -179,15 +190,6 @@ export default function CoffeeShopDetail({ shop, initialReviews }: CoffeeShopDet
             </>
           )}
         </div>
-      </div>
-      <div className="p-4 bg-yellow-50 rounded-lg mb-4">
-        <p className="text-yellow-800">
-          {session ? (
-            <>You&apos;re verified with Worldcoin. You can leave reviews and vote.</>
-          ) : (
-            <>Please verify with Worldcoin to leave reviews and vote on other reviews.</>
-          )}
-        </p>
       </div>
     </div>
   );

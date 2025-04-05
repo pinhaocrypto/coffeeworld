@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistance } from '@/utils/googleMaps';
+import CrowdStatus from './CrowdStatus';
 
 interface CoffeeShop {
   id: string;
@@ -91,6 +92,12 @@ export default function CoffeeShopCard({ shop }: CoffeeShopCardProps) {
               ({shop.reviewCount} {shop.reviewCount === 1 ? 'review' : 'reviews'})
             </span>
           </div>
+          
+          {/* Add crowd status */}
+          <div className="mb-2">
+            <CrowdStatus coffeeShopId={shop.id} compact={true} />
+          </div>
+          
           {shop.distance !== undefined && (
             <div className="mt-1 text-gray-500 text-sm">
               {formatDistance(shop.distance)}
