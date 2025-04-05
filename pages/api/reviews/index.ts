@@ -17,7 +17,7 @@ let mockReviews: Review[] = [
     content: 'Great atmosphere and friendly staff! The pour-over coffee is exceptional and they have a great selection of pastries.',
     rating: 5,
     date: '2025-03-01T12:00:00Z',
-    upvotes: 2,
+    upvotes: 8,
     downvotes: 0,
     userVote: null
   },
@@ -42,7 +42,7 @@ let mockReviews: Review[] = [
     content: 'Their espresso is the best in town! Rich and smooth with perfect crema. Highly recommend!',
     rating: 5,
     date: '2025-03-10T14:22:00Z',
-    upvotes: 1,
+    upvotes: 12,
     downvotes: 0,
     userVote: null
   },
@@ -103,7 +103,7 @@ let mockReviews: Review[] = [
     content: 'Their single-origin Ethiopian beans are exceptional. Notes of blueberry and chocolate really come through. A bit pricey though.',
     rating: 4,
     date: '2025-03-22T09:30:00Z',
-    upvotes: 2,
+    upvotes: 10,
     downvotes: 0,
     userVote: null
   },
@@ -127,7 +127,7 @@ let mockReviews: Review[] = [
     content: 'Their croissants are as good as their coffee! Perfectly flaky and buttery. The small size of the shop gives it a cozy feel.',
     rating: 5,
     date: '2025-03-24T08:15:00Z',
-    upvotes: 3,
+    upvotes: 15,
     downvotes: 0,
     userVote: null
   },
@@ -163,7 +163,7 @@ let mockReviews: Review[] = [
     content: 'Attended their coffee brewing workshop. Very educational and the baristas really know their stuff. Highly recommend!',
     rating: 5,
     date: '2025-03-27T18:30:00Z',
-    upvotes: 4,
+    upvotes: 7,
     downvotes: 0,
     userVote: null
   },
@@ -199,7 +199,7 @@ let mockReviews: Review[] = [
     content: 'I\'ve been coming here every morning for the past year. Consistently good coffee and friendly service. They know my order by heart now!',
     rating: 5,
     date: '2025-03-30T07:30:00Z',
-    upvotes: 3,
+    upvotes: 6,
     downvotes: 0,
     userVote: null
   },
