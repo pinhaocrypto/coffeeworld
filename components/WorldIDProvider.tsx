@@ -166,13 +166,17 @@ export function WorldIDProvider({ children }: { children: React.ReactNode }) {
       {/* 只在生產環境中使用真實的 IDKitWidget */}
       {!IS_DEV && (
         <IDKitWidget
-          app_id={`app_${APP_ID}`}
+          app_id={`app_${APP_ID.replace(/^app_/, '')}`}
           action="verify"
+          signal=""
           onSuccess={handleVerificationSuccess}
           handleVerify={(proof) => {
+            console.log('Received World ID proof for verification:', proof);
             return Promise.resolve();
           }}
           verification_level={VerificationLevel.Device}
+          // 確保使用正確的環境配置
+          autoClose
         >
           {({ open }) => {
             openWidgetRef.current = open;
